@@ -15,8 +15,9 @@
 - [x] 修改Logger为单例模式
 - [x] 插件配置项
 - [x] 算法开发者框架
+- [x] git版本管理（客户端与服务端开发）
+- [x] 添加license授权
 - [] opencv读取图像 
-- [] git版本管理（客户端与服务端开发）
 - [] 日志功能使用文件还是std::cout，应当考虑与linux的systemctl服务和jounalctl，应当能够定期清理
 - [] tensorrt推理，串流程
 - [] 开机自启动
