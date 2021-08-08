@@ -10,6 +10,12 @@ int main(int argc, const char** argv)
     detsvr::Config::load("./config.txt");
     detsvr::Config& cfg = detsvr::Config::GetInstance();
 
+    if(!detsvr::License::Legal(cfg.licenseCfg.license, cfg.svrCfg.NIC))
+    {
+         logger.Log("Illegal license...");
+         return 0;
+    }
+
     detsvr::DetectionService svr(cfg, logger);
     
     int errorCode = svr.initialize();
