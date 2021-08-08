@@ -55,6 +55,16 @@ private:
     
 };
 
+
+struct License
+{
+    static int QueryMac(std::string& macAddr, const std::string& NICName);
+    static std::string GenerateKey(const std::string& macAddr);
+    static bool Legal(const std::string& authorizedCode, const std::string& NICName);
+};
+
+
+
 } // end namespace detsvr
 
 #endif

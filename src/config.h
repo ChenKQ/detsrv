@@ -11,6 +11,7 @@ typedef struct _ServiceConfig
     std::string listenIP {"0.0.0.0"};
     int port {8080};
     std::string baseDir {"./"};
+    std::string NIC {"eth0"};
 } ServiceConfig;
 
 typedef struct _PluginConfig
@@ -18,11 +19,17 @@ typedef struct _PluginConfig
     std::string filename;
 } PluginConfig;
 
+typedef struct _LicenseConfig
+{
+    std::string license;
+} LicenseConfig;
+
 class Config
 {
 public:
     ServiceConfig svrCfg;
     PluginConfig pluginCfg;
+    LicenseConfig licenseCfg;
 
 public:
     Config(const Config&) = delete;

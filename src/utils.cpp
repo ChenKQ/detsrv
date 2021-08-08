@@ -1,4 +1,11 @@
 #include "utils.h"
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <string>
+#include <cstring>
+#include <functional>
 
 namespace detsvr
 {
@@ -107,6 +114,70 @@ Logger& Logger::CreateInstance()
 {
     static Logger logger;
     return logger;
+}
+
+int License::QueryMac(std::string& macAddr, const std::string& NICName)
+{
+    struct ifreq ifr;
+    int sock = 0;
+    char mac[32] = "";
+
+    sock = socket(AF_INET,SOCK_STREAM,0);
+    if (sock < 0)
+    {
+        return 1;
+    }
+
+    strcpy(ifr.ifr_name, NICName.c_str());
+    if(ioctl(sock, SIOCGIFHWADDR, &ifr) < 0)
+    {
+        return 3;
+    }
+
+    int i = 0;
+    for(i=0; i< 6; ++i)
+    {
+        sprintf(mac+3*i, "%02X:", (unsigned char)ifr.ifr_hwaddr.sa_data[i]);
+    }
+    mac[3*i-1] = 0;
+    macAddr = std::string{mac};    
+
+    return 0;
+}
+
+std::string License::GenerateKey(const std::string& macAddr)
+{
+    std::string macUpper {macAddr};
+    for(auto& c : macUpper) c = toupper(c);
+    
+    std::string license = std::string{"AIRCAS:"} + macUpper + std::string{":CYBER"};
+    std::hash<char> hash_func;
+    std::stringstream hashValueStrm;
+    for(auto& c : license) 
+    {
+        hashValueStrm << hash_func(c);
+    }
+    return hashValueStrm.str();
+}
+
+bool License::Legal(const std::string& authorizedCode, const std::string& NICName)
+{
+    std::string macAddress {""}; 
+    int flag = QueryMac(macAddress, NICName);
+    if(flag != 0)
+    {
+        return false;
+    }
+
+    std::string legalLicense = GenerateKey(macAddress);
+    if(legalLicense == authorizedCode)
+    {
+        return true;
+    }
+    else 
+    {
+        return false;
+    }
 }
 
 } // end namespace detsvr

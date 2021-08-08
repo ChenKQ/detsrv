@@ -33,17 +33,20 @@ void ISerialize<T>::Deserialize(T& obj, const std::string& s)
 void to_json(nlohmann::ordered_json& j, const BBox& box);
 void from_json(const nlohmann::ordered_json& j, BBox& box);
 
-void to_json(nlohmann::ordered_json& j, const DetectionResult& box);
-void from_json(const nlohmann::ordered_json& j, DetectionResult& box);
+void to_json(nlohmann::ordered_json& j, const DetectionResult& result);
+void from_json(const nlohmann::ordered_json& j, DetectionResult& result);
 
-void to_json(nlohmann::ordered_json& j, const ServiceConfig& box);
-void from_json(const nlohmann::ordered_json& j, ServiceConfig& box);
+void to_json(nlohmann::ordered_json& j, const ServiceConfig& cfg);
+void from_json(const nlohmann::ordered_json& j, ServiceConfig& cfg);
 
-void to_json(nlohmann::ordered_json& j, const PluginConfig& box);
-void from_json(const nlohmann::ordered_json& j, PluginConfig& box);
+void to_json(nlohmann::ordered_json& j, const PluginConfig& cfg);
+void from_json(const nlohmann::ordered_json& j, PluginConfig& cfg);
 
-void to_json(nlohmann::ordered_json& j, const Config& box);
-void from_json(const nlohmann::ordered_json& j, Config& box);
+void to_json(nlohmann::ordered_json& j, const LicenseConfig& cfg);
+void from_json(const nlohmann::ordered_json& j, LicenseConfig& cfg);
+
+void to_json(nlohmann::ordered_json& j, const Config& cfg);
+void from_json(const nlohmann::ordered_json& j, Config& cfg);
 
 } // end namespace detsvr
 
