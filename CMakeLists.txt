@@ -12,3 +12,8 @@ add_executable(detsvr src/run.cpp   src/base64.cpp
 )
 target_link_libraries(detsvr "pthread" "dl")
 target_include_directories(detsvr PUBLIC "include/")
+set_property(TARGET detsvr PROPERTY CXX_STANDARD 17)
+
+add_executable(keygen src/keygen.cpp src/utils.cpp)
+set_property(TARGET keygen PROPERTY CXX_STANDARD 17)
+
