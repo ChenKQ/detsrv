@@ -1,6 +1,8 @@
 #include "plugincore.h"
 #include "dlfcn.h"
-#include "iostream"
+#include "utils.h"
+#include <iostream>
+#include <cassert>
 
 namespace detsvr
 {
@@ -18,18 +20,23 @@ DynamicLoader::~DynamicLoader()
 
 void DynamicLoader::open()
 {
+    Logger& logger = detsvr::Logger::CreateInstance();
+
     m_handle = dlopen(m_filename.c_str(), m_flags);
     if(0 == m_handle)
     {
-        m_handle = nullptr;
-        std::cerr << "cannot open the file: " << m_filename << "\n";
+        m_handle==nullptr;
+        std::string errorInfo = std::string{"cannot open the file: "} + m_filename;
+        logger.Log(errorInfo);
+        throw std::runtime_error(errorInfo);
     }
+    logger.Log(std::string{"loaded the file: "} + m_filename );
     dlerror(); // clear any existing error
 }
 
 void DynamicLoader::close()
 {
-    if(nullptr == m_handle)
+    if(nullptr != m_handle)
     {
         dlclose(m_handle);
     }
@@ -54,14 +61,19 @@ void* DynamicLoader::loopup(const char* symbol)
 
 std::shared_ptr<IDetect> PluginCore::CreateDetector(const char* filename)
 {
+    Logger& logger = detsvr::Logger::CreateInstance();
+
     DynamicLoader loader(filename);
     loader.open();
-    void* p_factory = loader.loopup("createInstance");
+    std::string methodName = "createInstance";
+    void* p_factory = loader.loopup(methodName.c_str());
     if(p_factory == nullptr)
     {
-        return {nullptr};
+        std::string errorInfo = std::string{"cannot find the method: "} + methodName;
+        logger.Log(errorInfo);
+        throw std::runtime_error(errorInfo);
     }
-
+    logger.Log(std::string{"found method: "} + methodName + " in " + filename);
     using func = std::shared_ptr<IDetect> (*) ();
     func f = reinterpret_cast<func>(p_factory);
     return f();
