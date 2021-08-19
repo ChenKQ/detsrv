@@ -1,5 +1,6 @@
 #include "plugincore.h"
 #include "dlfcn.h"
+#include "iostream"
 
 namespace detsvr
 {
@@ -21,6 +22,7 @@ void DynamicLoader::open()
     if(0 == m_handle)
     {
         m_handle = nullptr;
+        std::cerr << "cannot open the file: " << m_filename << "\n";
     }
     dlerror(); // clear any existing error
 }
