@@ -26,7 +26,8 @@ void DynamicLoader::open()
     if(0 == m_handle)
     {
         m_handle==nullptr;
-        std::string errorInfo = std::string{"cannot open the file: "} + m_filename;
+        const char* error= dlerror(); // clear any existing error
+        std::string errorInfo = std::string{"cannot open the file: "} + m_filename + ":\n" + error;
         logger.Log(errorInfo);
         throw std::runtime_error(errorInfo);
     }
@@ -49,31 +50,29 @@ void* DynamicLoader::loopup(const char* symbol)
         return nullptr;
     }
 
+    Logger& logger = detsvr::Logger::CreateInstance();
+
     void* ptr = nullptr;
     ptr = dlsym(m_handle, symbol);
 
     if(0 == ptr)
     {
-        dlerror(); // clear any existing errors
+        const char* error = dlerror(); // clear any existing errors
+        std::string errorInfo = std::string{"cannot find the method: "} + symbol + ":\n" + error;
+        logger.Log(errorInfo);
+        throw std::runtime_error(errorInfo);
     }
+    logger.Log(std::string{"found method: "} + symbol);
+    dlerror(); // clear any existing error
     return ptr;
 }
 
 std::shared_ptr<IDetect> PluginCore::CreateDetector(const char* filename)
 {
-    Logger& logger = detsvr::Logger::CreateInstance();
-
     DynamicLoader loader(filename);
     loader.open();
     std::string methodName = "createInstance";
     void* p_factory = loader.loopup(methodName.c_str());
-    if(p_factory == nullptr)
-    {
-        std::string errorInfo = std::string{"cannot find the method: "} + methodName;
-        logger.Log(errorInfo);
-        throw std::runtime_error(errorInfo);
-    }
-    logger.Log(std::string{"found method: "} + methodName + " in " + filename);
     using func = std::shared_ptr<IDetect> (*) ();
     func f = reinterpret_cast<func>(p_factory);
     return f();
