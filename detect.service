@@ -1,0 +1,23 @@
+[Unit]
+Description=call detsvr
+ConditionPathExists=/home/chenkq/workspace/deploy/detsrv/detsvr
+Requires=nv.service
+After=nv.service
+
+[Service]
+Type=simple
+User=chenkq
+Group=chenkq
+WorkingDirectory=/home/chenkq/workspace/deploy/detsrv/
+ExecStart=/home/chenkq/workspace/deploy/detsrv/detsvr
+#TimeoutSec=0
+#StandardOutput=tty
+#RemainAfterExit=yes
+#SysVStartPriority=99
+Restart=always
+RestartSec=5
+StartLimitInterval=0
+# RestartPreventExitStatus =143 137 SIGTERM SIGKILL
+
+[Install]
+WantedBy=multi-user.target
