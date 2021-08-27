@@ -13,6 +13,7 @@ public:
     virtual ~IDetect() = default;
 
     virtual DetectionResult detect(const char* data, size_t length) = 0;
+    virtual DetectionResult detect(int rows, int cols, int type, void* data, size_t step) = 0;
 };
 
 extern "C"
