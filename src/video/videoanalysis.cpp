@@ -3,8 +3,7 @@
 #include "../utils.h"
 #include "detsvr/IDetect.h"
 #include "detsvr/detsvr.h"
-#include "videoreader.h"
-#include "playmanager.h"
+#include "io.h"
 #include "rtmpwriter.h"
 #include <opencv2/opencv.hpp>
 #include <string>

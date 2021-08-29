@@ -2,8 +2,7 @@ find_package(OpenCV)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 add_executable(videoanalysis videoanalysis.cpp 
-                             videoreader.cpp
-                             playmanager.cpp
+                             io.cpp
                              rtmpwriter.cpp
                             ../plugincore.cpp 
                             ../config.cpp
@@ -14,7 +13,7 @@ target_include_directories(videoanalysis PRIVATE ${OpenCV_INCLUDE_DIRS}
 )
 target_link_libraries(videoanalysis PRIVATE ${OpenCV_LIBS} "dl" "pthread")
 
-add_executable(videoplay videoplay.cpp videoreader.cpp playmanager.cpp)
+add_executable(videoplay videoplay.cpp io.cpp)
 target_include_directories(videoplay PRIVATE ${OpenCV_INCLUDE_DIRS} 
                                                 "../../include"
 )
