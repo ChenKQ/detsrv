@@ -2,8 +2,9 @@
 #include "../plugincore.h"
 #include "../utils.h"
 #include "detsvr/IDetect.h"
-#include "detsvr/detectionresult.h"
-#include "rtspcapture.h"
+#include "detsvr/detsvr.h"
+#include "videoreader.h"
+#include "playmanager.h"
 #include "rtmpwriter.h"
 #include <opencv2/opencv.hpp>
 #include <string>
@@ -32,30 +33,36 @@ int main(int argc, char* argv[])
     detsvr::Config::load("./config.txt");
     detsvr::Config& cfg = detsvr::Config::GetInstance();
 
-    // std::shared_ptr<detsvr::IDetect> pDetector = 
-    //         detsvr::PluginCore::CreateDetector(cfg.pluginCfg.filename.c_str());
+    std::shared_ptr<detsvr::IDetect> pDetector = 
+            detsvr::PluginCore::CreateDetector(cfg.pluginCfg.filename.c_str());
 
-    std::string rtspuri = "rtsp://172.20.10.9:8554/live/test1";
+    std::string rtspuri = "rtsp://192.168.1.7:8554/live/test1";
     // int capture_width = 1280 ;
     // int capture_height = 720 ;
-    // int display_width = 1920 ;
-    // int display_height = 1080 ;
-    int display_width = 1280 ;
-    int display_height = 720 ;
+    int display_width = 1920 ;
+    int display_height = 1080 ;
+    // int display_width = 1280 ;
+    // int display_height = 720 ;
     int framerate = 30 ;
     // int flip_method = 2 ;
 
-    cv::namedWindow("CSI Camera", cv::WINDOW_AUTOSIZE);
+    // cv::namedWindow("CSI Camera", cv::WINDOW_AUTOSIZE);
     std::cout << "Hit ESC to exit" << "\n" ;
     
-    detsvr::RtspCapture cap(8);
-    if(!cap.open(rtspuri))
+    std::shared_ptr<detsvr::IInput> pReader = 
+        detsvr::Factory<detsvr::IInput>::CreateInstance("rtsp");
+    detsvr::PlayManager pm(pReader, 8);
+    if(!pReader->open((void*)rtspuri.c_str()))
     {
         return -1;
     }
-    cap.play();
 
-    std::string rtmpWriteUri = "rtmp://172.20.10.9:1935/live/test2";
+    if(!pm.start())
+    {
+        return -1;
+    }
+
+    std::string rtmpWriteUri = "rtmp://192.168.1.7:1935/live/test2";
     detsvr::RtmpWriter writer(4);
     auto pf = [&](cv::Mat& image, const detsvr::DetectionResult& result, 
                            cv::VideoWriter& w)
@@ -89,22 +96,22 @@ int main(int argc, char* argv[])
     int count = 0;
     while(true)
     {
-    	if (!cap.read(img)) 
+    	if (!pm.read(img)) 
         {
             // std::cout<<"Capture read error"<<std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             continue;
 	    }
         ++count;
-        // if(count %1 == 0)
-        // {
-        //     result = pDetector->detect(img.rows, img.cols, img.type(), img.data, img.step);
-        //     std::cout   << "{img_width: " << result.img_width 
-        //         << ", img_height: " << result.img_height
-        //         << ", pre_time: " << result.pre_time
-        //         << ", inf_time: " << result.inf_time
-        //         << ", list: " << result.list.size() << "}\n";
-        // }   
+        if(count %1 == 0)
+        {
+            result = pDetector->detect(img.rows, img.cols, img.type(), img.data, img.step);
+            std::cout   << "{img_width: " << result.img_width 
+                << ", img_height: " << result.img_height
+                << ", pre_time: " << result.pre_time
+                << ", inf_time: " << result.inf_time
+                << ", list: " << result.list.size() << "}\n";
+        }   
         
         // for(const detsvr::BBox& box : result.list)
         // {
@@ -117,7 +124,8 @@ int main(int argc, char* argv[])
         writer.write(img, result);
     }
 
-    cap.close();
-    cv::destroyAllWindows();
+    pm.stop();
+    pReader->close();
+    // cv::destroyAllWindows();
     return 0;
 }
