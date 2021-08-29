@@ -15,17 +15,6 @@ namespace cv
 
 namespace detsvr
 {
-class IInput
-{
-public:
-    virtual bool open(void* params) = 0;
-    virtual void close() = 0;
-    virtual bool read(cv::Mat& outImage) = 0;
-    virtual bool isOpen() const = 0;
-
-    virtual ~IInput() = default;
-}; // IInput
-
 typedef struct _BBox
 {
     int idx; 
@@ -48,6 +37,36 @@ typedef struct _DetectionResult
 
     std::vector<BBox> list; // detected objects
 } DetectionResult;
+
+class IInput
+{
+public:
+    virtual bool open(void* params) = 0;
+    virtual void close() = 0;
+    virtual bool read(cv::Mat& outImage) = 0;
+    virtual bool isOpen() const = 0;
+
+    virtual ~IInput() = default;
+}; // IInput
+
+class IOutput
+{
+public:
+    virtual bool open(void* params) = 0;
+    virtual void close() = 0;
+    virtual bool write(cv::Mat& image) = 0;
+    virtual bool isOpen() const = 0;
+
+    virtual ~IOutput() = default;
+}; // IOutput
+
+class IPostProcess
+{
+public:
+    virtual bool process(cv::Mat& img, DetectionResult& result) = 0;
+
+    virtual ~IPostProcess() = default;
+}; 
 
 template<typename INTERFACE, typename IMPLEMENT>
 struct Builder
