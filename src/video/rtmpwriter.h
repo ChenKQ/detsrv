@@ -1,7 +1,7 @@
 #ifndef VIDEO_RTMP_WRITER_H
 #define VIDEO_RTMP_WRITER_H
 
-#include "detsvr/detectionresult.h"
+#include "detsvr/detsvr.h"
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <tuple>

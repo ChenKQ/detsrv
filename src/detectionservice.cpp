@@ -1,5 +1,5 @@
 #include "detectionservice.h"
-#include "detsvr/detectionresult.h"
+#include "detsvr/detsvr.h"
 #include "ISerialize.h"
 #include "plugincore.h"
 #include "base64.h"

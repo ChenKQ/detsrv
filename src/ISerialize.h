@@ -1,7 +1,7 @@
 #ifndef _DETSVR_ISERIALIZE_
 #define _DETSVR_ISERIALIZE_
 
-#include "detsvr/detectionresult.h"
+#include "detsvr/detsvr.h"
 #include "config.h"
 #include "nlohmann/json.hpp"
 #include <string>

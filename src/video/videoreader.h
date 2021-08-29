@@ -12,20 +12,6 @@
 namespace detsvr
 {
 
-// class IVideoReader
-// {
-// // public:
-// //     using CreateFunc = std::shared_ptr<IVideoReader> (void);
-// public:
-//     virtual bool open(const std::string& uri) = 0;
-//     virtual void close() = 0;
-//     virtual bool read(cv::Mat& outImage) = 0;
-//     virtual bool isOpen() const = 0;
-
-//     virtual ~IVideoReader() = default;
-// }; // IVideoReader
-
-
 class OpenCVReader : public IInput
 {
 public:

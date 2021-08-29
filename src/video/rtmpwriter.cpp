@@ -1,26 +1,9 @@
 #include "rtmpwriter.h"
-#include "detsvr/detectionresult.h"
+#include "detsvr/detsvr.h"
 #include <opencv2/opencv.hpp>
 
 namespace detsvr
 {
-
-// class ImageResultPair
-// {
-// public:
-//     ImageResultPair(const cv::Mat& img, const DetectionResult& res);
-// public:
-//     DetectionResult result;
-//     cv::Mat image;
-// };
-
-
-// ImageResultPair::ImageResultPair(const cv::Mat& img, const DetectionResult& res):
-//                                                                 image(img)
-// {
-//     result.
-// }
-
 RtmpWriter::RtmpWriter(int bufSize) : bufferSize(bufSize),
                                       imageResultPool(bufSize)
 {
@@ -88,7 +71,7 @@ bool RtmpWriter::write(cv::Mat& image, DetectionResult& result)
         imgResPair = imageResultPool.back();
         imageResultPool.pop_back();
         // poolLock.unlock();
-        std::cout << "from image-result pool...\n";
+        // std::cout << "from image-result pool...\n";
     }
     else 
     {
@@ -98,7 +81,7 @@ bool RtmpWriter::write(cv::Mat& image, DetectionResult& result)
         imgResPair = buffer.front();
         buffer.pop();
         // bufferLock.unlock();
-        std::cout << "from writer buffer...\n";
+        // std::cout << "from writer buffer...\n";
     }
     cv::Mat& bufferImg = std::get<0>(imgResPair);
     std::shared_ptr<DetectionResult> pRes = std::get<1>(imgResPair);

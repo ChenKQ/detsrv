@@ -1,5 +1,5 @@
 #include "videoreader.h"
-#include "registry.h"
+#include "detsvr/detsvr.h"
 
 namespace detsvr
 {

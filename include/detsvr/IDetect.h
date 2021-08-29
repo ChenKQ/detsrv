@@ -1,7 +1,7 @@
 #ifndef _DETSVR_IDETECT_
 #define _DETSVR_IDETECT_
 
-#include "detectionresult.h"
+#include "detsvr.h"
 #include <memory>
 
 namespace detsvr

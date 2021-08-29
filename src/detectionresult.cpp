@@ -1,4 +1,4 @@
-#include "detsvr/detectionresult.h"
+#include "detsvr/detsvr.h"
 #include "ISerialize.h"
 #include "nlohmann/json.hpp"
 
