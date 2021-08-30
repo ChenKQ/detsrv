@@ -4,7 +4,6 @@
 #include "detsvr/IDetect.h"
 #include "detsvr/detsvr.h"
 #include "io.h"
-#include "rtmpwriter.h"
 #include <opencv2/opencv.hpp>
 #include <string>
 #include <memory>
@@ -35,66 +34,63 @@ int main(int argc, char* argv[])
     std::shared_ptr<detsvr::IDetect> pDetector = 
             detsvr::PluginCore::CreateDetector(cfg.pluginCfg.filename.c_str());
 
-    std::string rtspuri = "rtsp://192.168.1.7:8554/live/test1";
-    // int capture_width = 1280 ;
-    // int capture_height = 720 ;
-    int display_width = 1920 ;
-    int display_height = 1080 ;
-    // int display_width = 1280 ;
-    // int display_height = 720 ;
-    int framerate = 30 ;
-    // int flip_method = 2 ;
-
     // cv::namedWindow("CSI Camera", cv::WINDOW_AUTOSIZE);
-    std::cout << "Hit ESC to exit" << "\n" ;
+    // std::cout << "Hit ESC to exit" << "\n" ;
     
     std::shared_ptr<detsvr::IInput> pReader = 
         detsvr::Factory<detsvr::IInput>::CreateInstance("rtsp");
     detsvr::PlayManager pm(pReader, 8);
-    if(!pReader->open((void*)rtspuri.c_str()))
+    if(!pReader->open((void*)"rtsp://172.20.10.9:8554/live/test1"))
     {
         return -1;
     }
-
     if(!pm.start())
     {
         return -1;
     }
 
-    std::string rtmpWriteUri = "rtmp://192.168.1.7:1935/live/test2";
-    detsvr::RtmpWriter writer(4);
-    auto pf = [&](cv::Mat& image, const detsvr::DetectionResult& result, 
-                           cv::VideoWriter& w)
+    std::shared_ptr<detsvr::IOutput> pWriter = 
+        detsvr::Factory<detsvr::IOutput>::CreateInstance("rtmp");
+    detsvr::WriteManager wm(pWriter, 8);
+    detsvr::RtmpWriter::Params params 
     {
-        for(const detsvr::BBox& box : result.list)
-        {
-            cv::Point2d tl(box.minx, box.miny);
-            cv::Point2d br(box.maxx, box.maxy);
-            cv::rectangle(image, tl, br, cv::Scalar(0x27, 0xC1, 0x36), 2);
-            cv::putText(image, box.name, cv::Point(box.minx, box.maxy - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
-        }
-
-        w.write(image);
-        // w << image;
-        // cv::imshow("CSI Camera",image);
-        // int keycode = cv::waitKey(1) & 0xff ; 
-        // if (keycode == 27) 
-        // {
-        //     writer.close();
-        //     cap.close();
-        // }
-        // std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        uri: "rtmp://172.20.10.9:1935/live/test2",
+        fps: 30,
+        displayWidth: 1920,
+        displayHeight: 1080,
+        isColor: true
     };
-
-    writer.open(rtmpWriteUri, framerate, display_width, display_height, true, pf);
+    if(!pWriter->open((void*)&params))
+    {
+        return -1;
+    }
+    if(!wm.start())
+    {
+        return -1;
+    }
 
     cv::Mat img;
     detsvr::DetectionResult result;
 
-    
     int count = 0;
     while(true)
     {
+        if(pm.getStatus()!=detsvr::PlayManager::RUN)
+        {
+            wm.stop();
+            std::cerr << "Error: the input is status is: " << 
+                static_cast<detsvr::PlayManager::Status>(pm.getStatus());
+            return -1;
+        }
+
+        if(wm.getStatus()!=detsvr::WriteManager::RUN)
+        {
+            pm.stop();
+            std::cerr << "Error: the output status is: " << 
+                static_cast<detsvr::WriteManager::Status>(wm.getStatus());
+            return -1;
+        }
+
     	if (!pm.read(img)) 
         {
             // std::cout<<"Capture read error"<<std::endl;
@@ -112,15 +108,7 @@ int main(int argc, char* argv[])
                 << ", list: " << result.list.size() << "}\n";
         }   
         
-        // for(const detsvr::BBox& box : result.list)
-        // {
-        //     cv::Point2d tl(box.minx, box.miny);
-        //     cv::Point2d br(box.maxx, box.maxy);
-        //     cv::rectangle(img, tl, br, cv::Scalar(0x27, 0xC1, 0x36), 2);
-        //     cv::putText(img, box.name, cv::Point(box.minx, box.maxy - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
-        // }
-        
-        writer.write(img, result);
+        wm.write(img, result);
     }
 
     pm.stop();

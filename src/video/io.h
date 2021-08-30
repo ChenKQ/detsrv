@@ -104,7 +104,7 @@ public:
     {
         ERROR = -2,
         STOP = -1,
-        PLAY = 1
+        RUN = 1
     };
 public:
     PlayManager(const std::shared_ptr<IInput>& input, int bufferSize = 8);
@@ -118,7 +118,7 @@ public:
     void stop();
     bool read(cv::Mat& outImage);
 
-    PlayManager::Status getStatus() const;
+    int getStatus() const { return playStatus; }
 
 private:
     void run();
@@ -152,18 +152,19 @@ public:
     };
 
 public:
-    RtmpWriter(const std::shared_ptr<IOutput>& output, int bufferSize=8);
-    ~RtmpWriter();
-    bool start(const std::shared_ptr<IPostProcess>& processor);
+    WriteManager(const std::shared_ptr<IOutput>& output, int bufferSize=8);
+    ~WriteManager();
+    bool start();
     void stop();
     bool write(cv::Mat& image, DetectionResult& result);
+
+    int getStatus() const { return status; }
 
 private:
     void run();
 
 private:
     std::shared_ptr<IOutput> writer;
-    std::shared_ptr<IPostProcess> postProcessor; 
 
     std::vector<ImageResultPair> imageResultPool;
     std::queue<ImageResultPair> buffer;

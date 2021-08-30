@@ -15,6 +15,15 @@ Factory<IInput>::repository =
     {"csi", CSICameraReaderBuilder::CreateInstance}
 };
 
+using RtmpWriterBuilder = Builder<IOutput, RtmpWriter>;
+
+template<>
+std::map<std::string, std::function<Factory<IOutput>::CreateFunc>>
+Factory<IOutput>::repository = 
+{
+    {"rtmp", RtmpWriterBuilder::CreateInstance}
+};
+
 
 bool RtspReader::open(void* uri)
 {
@@ -73,7 +82,7 @@ bool OpenCVWriter::write(cv::Mat& image)
         return false;
     }
     writer.write(image);
-
+    return true;
 }
 
 bool RtmpWriter::open(void* params)
@@ -124,7 +133,7 @@ bool PlayManager::start()
     }
     if(playStatus == Status::STOP)
     {
-        playStatus = Status::PLAY;
+        playStatus = Status::RUN;
         receiveThread = std::thread([obj=this]
         {
             obj->run();
@@ -211,7 +220,7 @@ void PlayManager::run()
             if(failureCount >= FAILURELIMIT)
             {
                 playStatus = Status::ERROR;
-                std::cout << "failure number exceeds the limit...\n";
+                std::cout << "failure number of input exceeds the limit...\n";
                 // cap->close();
                 return;
             }
@@ -228,7 +237,9 @@ void PlayManager::run()
     }
 }
 
-RtmpWriter::RtmpWriter(const std::shared_ptr<IOutput>& output, int bufSize)
+WriteManager::WriteManager(const std::shared_ptr<IOutput>& output, int bufSize): 
+                                                    bufferSize(bufSize)
+                                                    
 {
     assert(output!=nullptr);
     status = Status::STOP;
@@ -240,19 +251,18 @@ RtmpWriter::RtmpWriter(const std::shared_ptr<IOutput>& output, int bufSize)
     writer = output;
 }
 
-RtmpWriter::~RtmpWriter()
+WriteManager::~WriteManager()
 {
-    close();
+    stop();
 }
 
-bool RtmpWriter::start(const std::shared_ptr<IPostProcess>& processor)
+bool WriteManager::start()
 {
-    if(!writer.isOpen())
+    if(!writer->isOpen())
     {
         std::cout << "the output source is not open ...\n";
         return false;
     }
-    postProcessor = processor;
 
     if(status == Status::STOP)
     {
@@ -267,7 +277,7 @@ bool RtmpWriter::start(const std::shared_ptr<IPostProcess>& processor)
     return true;
 }
 
-void RtmpWriter::stop()
+void WriteManager::stop()
 {
     status = Status::STOP;
     signalNew.notify_all();
@@ -277,7 +287,7 @@ void RtmpWriter::stop()
     newMutex.unlock();
 }
 
-bool RtmpWriter::write(cv::Mat& image, DetectionResult& result)
+bool WriteManager::write(cv::Mat& image, DetectionResult& result)
 {
     ImageResultPair imgResPair;
     // std::unique_lock<std::mutex> poolLock(poolMutex);
@@ -313,56 +323,70 @@ bool RtmpWriter::write(cv::Mat& image, DetectionResult& result)
     return true;
 }
 
-void RtmpWriter::run()
+void WriteManager::run()
 {
     // status = WriteStatus::PLAY;
+    int failureCount = 0;
     ImageResultPair imgResPair;
 
     std::unique_lock<std::mutex> sigLock(newMutex);
     while(true)
     {
-        if(status==WriteStatus::STOP)
+        if(status==Status::STOP)
         {
-            writer.release();
+            // writer->close();
             std::cout << "stop writting...\n";
             return;
         }
 
-        // std::unique_lock<std::mutex> bufferLock(bufferMutex);
         while(buffer.empty())
         {
             signalNew.wait(sigLock);
 
             if(status==Status::STOP)
             {
-                writer.release();
+                // writer->close();
                 std::cout << "stop writting when blocked...\n";
                 return;
             }
         }
-
+        // std::unique_lock<std::mutex> bufferLock(bufferMutex);
         imgResPair = buffer.front();
         buffer.pop();
         // bufferLock.unlock();
 
         cv::Mat& img = std::get<0>(imgResPair);
         std::shared_ptr<DetectionResult> result = std::get<1>(imgResPair);
-        if(postProcessor!=nullptr)
-        {            
-            postProcessor->process(img, *result, writer);
-        }
-        for(const detsvr::BBox& box : result.list)
+        for(const detsvr::BBox& box : result->list)
         {
             cv::Point2d tl(box.minx, box.miny);
             cv::Point2d br(box.maxx, box.maxy);
-            cv::rectangle(image, tl, br, cv::Scalar(0x27, 0xC1, 0x36), 2);
-            cv::putText(image, box.name, cv::Point(box.minx, box.maxy - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
+            cv::rectangle(img, tl, br, cv::Scalar(0x27, 0xC1, 0x36), 2);
+            cv::putText(img, box.name, cv::Point(box.minx, box.maxy - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
         }
-        writer.write(img);
-        
-        // std::unique_lock<std::mutex> poolLock(poolMutex);
-        imageResultPool.push_back(imgResPair);
-        // poolLock.unlock();
+        if(!writer->write(img))
+        {
+            // std::unique_lock<std::mutex> poolLock(poolMutex);
+            imageResultPool.push_back(imgResPair);
+            // poolLock.unlock();
+            
+            ++failureCount;
+            if(failureCount >= FAILURELIMIT)
+            {
+                status = Status::ERROR;
+                std::cout << "failure number of output exceeds the limit...\n";
+                return ;
+            }
+        }
+        else 
+        {
+            // std::unique_lock<std::mutex> poolLock(poolMutex);
+            imageResultPool.push_back(imgResPair);
+            // poolLock.unlock();
+            failureCount = 0;
+        }
+
+
     }
 }
 

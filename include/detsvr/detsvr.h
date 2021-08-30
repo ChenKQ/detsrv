@@ -38,36 +38,6 @@ typedef struct _DetectionResult
     std::vector<BBox> list; // detected objects
 } DetectionResult;
 
-class IInput
-{
-public:
-    virtual bool open(void* params) = 0;
-    virtual void close() = 0;
-    virtual bool read(cv::Mat& outImage) = 0;
-    virtual bool isOpen() const = 0;
-
-    virtual ~IInput() = default;
-}; // IInput
-
-class IOutput
-{
-public:
-    virtual bool open(void* params) = 0;
-    virtual void close() = 0;
-    virtual bool write(cv::Mat& image) = 0;
-    virtual bool isOpen() const = 0;
-
-    virtual ~IOutput() = default;
-}; // IOutput
-
-class IPostProcess
-{
-public:
-    virtual bool process(cv::Mat& img, DetectionResult& result) = 0;
-
-    virtual ~IPostProcess() = default;
-}; 
-
 template<typename INTERFACE, typename IMPLEMENT>
 struct Builder
 {
@@ -121,6 +91,42 @@ Factory<INTERFACE>::CreateInstance(const std::string& name)
     auto& func = repository.at(name);
     return func();
 }
+
+class IInput
+{
+public:
+    virtual bool open(void* params) = 0;
+    virtual void close() = 0;
+    virtual bool read(cv::Mat& outImage) = 0;
+    virtual bool isOpen() const = 0;
+
+    virtual ~IInput() = default;
+}; // IInput
+
+template struct Factory<IInput>;
+
+class IOutput
+{
+public:
+    virtual bool open(void* params) = 0;
+    virtual void close() = 0;
+    virtual bool write(cv::Mat& image) = 0;
+    virtual bool isOpen() const = 0;
+
+    virtual ~IOutput() = default;
+}; // IOutput
+
+template struct Factory<IOutput>;
+
+// class IPostProcess
+// {
+// public:
+//     virtual bool process(cv::Mat& img, DetectionResult& result) = 0;
+
+//     virtual ~IPostProcess() = default;
+// }; 
+
+
 
 } // namespce detsvr
 
