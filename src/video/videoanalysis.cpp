@@ -31,8 +31,8 @@ int main(int argc, char* argv[])
     detsvr::Config::load("./config.txt");
     detsvr::Config& cfg = detsvr::Config::GetInstance();
 
-    std::shared_ptr<detsvr::IDetect> pDetector = 
-            detsvr::PluginCore::CreateDetector(cfg.pluginCfg.filename.c_str());
+    // std::shared_ptr<detsvr::IDetect> pDetector = 
+    //         detsvr::PluginCore::CreateDetector(cfg.pluginCfg.filename.c_str());
 
     // cv::namedWindow("CSI Camera", cv::WINDOW_AUTOSIZE);
     // std::cout << "Hit ESC to exit" << "\n" ;
@@ -56,10 +56,13 @@ int main(int argc, char* argv[])
     {
         uri: "rtmp://172.20.10.9:1935/live/test2",
         fps: 30,
-        displayWidth: 1920,
-        displayHeight: 1080,
+        // displayWidth: 1920,
+        // displayHeight: 1080,
+        displayWidth: 1280,
+        displayHeight: 720,
         isColor: true
     };
+    // detsvr::ScreenWriter::Params params {"Display"};
     if(!pWriter->open((void*)&params))
     {
         return -1;
@@ -98,15 +101,15 @@ int main(int argc, char* argv[])
             continue;
 	    }
         ++count;
-        if(count %1 == 0)
-        {
-            result = pDetector->detect(img.rows, img.cols, img.type(), img.data, img.step);
-            std::cout   << "{img_width: " << result.img_width 
-                << ", img_height: " << result.img_height
-                << ", pre_time: " << result.pre_time
-                << ", inf_time: " << result.inf_time
-                << ", list: " << result.list.size() << "}\n";
-        }   
+        // if(count %1 == 0)
+        // {
+        //     result = pDetector->detect(img.rows, img.cols, img.type(), img.data, img.step);
+        //     std::cout   << "{img_width: " << result.img_width 
+        //         << ", img_height: " << result.img_height
+        //         << ", pre_time: " << result.pre_time
+        //         << ", inf_time: " << result.inf_time
+        //         << ", list: " << result.list.size() << "}\n";
+        // }   
         
         wm.write(img, result);
     }

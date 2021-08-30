@@ -3,7 +3,6 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 
 add_executable(videoanalysis videoanalysis.cpp 
                              io.cpp
-                             rtmpwriter.cpp
                             ../plugincore.cpp 
                             ../config.cpp
                             ../utils.cpp

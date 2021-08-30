@@ -11,6 +11,7 @@
 #include <string>
 #include <thread>
 #include <atomic>
+#include <string>
 #include <functional>
 #include <condition_variable>
 #include <opencv2/opencv.hpp>
@@ -95,7 +96,23 @@ public:
 class RtspWriter final : public OpenCVWriter {};
 class RtspServer final : public OpenCVWriter {};
 class FileWriter final : public OpenCVWriter {};
-class ScreenWriter final : public OpenCVWriter {};
+
+class ScreenWriter final : public IOutput
+{
+public:
+    using Params = std::string;
+public:
+    ScreenWriter() = default;;
+    ~ScreenWriter() override { close(); }
+
+    bool open(void* params) override;
+    void close() override;
+    bool write(cv::Mat& image) override;
+    bool isOpen() const override { return openFlag; }
+private:
+    bool openFlag = false;
+    std::string windowName;
+};
 
 class PlayManager final
 {

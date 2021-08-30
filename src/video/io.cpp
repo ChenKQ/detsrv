@@ -16,12 +16,14 @@ Factory<IInput>::repository =
 };
 
 using RtmpWriterBuilder = Builder<IOutput, RtmpWriter>;
+using ScreenWriterBuilder = Builder<IOutput, ScreenWriter>;
 
 template<>
 std::map<std::string, std::function<Factory<IOutput>::CreateFunc>>
 Factory<IOutput>::repository = 
 {
-    {"rtmp", RtmpWriterBuilder::CreateInstance}
+    {"rtmp", RtmpWriterBuilder::CreateInstance},
+    {"screen", ScreenWriterBuilder::CreateInstance}
 };
 
 
@@ -106,6 +108,42 @@ bool RtmpWriter::open(void* params)
     return true;
 }
 
+bool ScreenWriter::open(void* params)
+{
+    if(openFlag)
+        return true;
+
+    std::string* p = (Params*)params;
+    windowName = *p;
+    cv::namedWindow(windowName, cv::WINDOW_AUTOSIZE);
+    
+    openFlag = true;
+    return openFlag;
+}
+
+void ScreenWriter::close()
+{
+    if(!openFlag)
+        return;
+    openFlag = false;
+    cv::destroyAllWindows();
+}
+
+bool ScreenWriter::write(cv::Mat& image)
+{
+    if(!isOpen())
+        return false;
+    cv::imshow(windowName,image);
+    int keycode = cv::waitKey(10) & 0xff ; 
+    if (keycode == 27)
+    {
+        openFlag = false;
+        std::cout << "get key value: " << keycode << "\n";
+    }
+        
+    return true;
+}
+
 PlayManager::PlayManager(const std::shared_ptr<IInput>& input, int bufSize) : 
                                         bufferSize(bufSize),
                                         imagePool(bufSize)
@@ -179,6 +217,13 @@ void PlayManager::run()
 
     while(true)
     {
+        if(!cap->isOpen())
+        {
+            std::cout << "Exit the fetching thread since the capture is not open...\n";
+            playStatus = Status::STOP;
+            return;
+        }
+
         if(playStatus==Status::STOP)
         {
             // cap->close();
@@ -332,6 +377,13 @@ void WriteManager::run()
     std::unique_lock<std::mutex> sigLock(newMutex);
     while(true)
     {
+        if(!writer->isOpen())
+        {
+            std::cout << "Exit the writing thread since the writer is not open...\n";
+            status = Status::STOP;
+            return;
+        }
+
         if(status==Status::STOP)
         {
             // writer->close();
