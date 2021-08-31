@@ -27,6 +27,13 @@ Factory<IOutput>::repository =
 };
 
 
+bool OpenCVReader::read(cv::Mat& outImage)
+{
+    if(!isOpen())
+        return false;
+    return cap.read(outImage);
+}
+
 bool RtspReader::open(void* uri)
 {
 

@@ -12,20 +12,26 @@ namespace cv
     class Mat;
 } // namespace cv
 
-
 namespace detsvr
 {
+
+/**
+ * @brief Bounding Box of an object 
+ */
 typedef struct _BBox
 {
-    int idx; 
-    std::string name;
-    double prob; 
-    int minx;
-    int maxx;
-    int miny;
+    int idx;    // the ith object in the detection result
+    std::string name; // class id
+    double prob; // the confidence
+    int minx; 
+    int maxx; 
+    int miny; 
     int maxy;
 } BBox;
 
+/**
+ * @brief Detection Result
+ */ 
 typedef struct _DetectionResult
 {
     std::string img_tag; // source
@@ -38,6 +44,18 @@ typedef struct _DetectionResult
     std::vector<BBox> list; // detected objects
 } DetectionResult;
 
+/**
+ * @brief Builder: 提供接口类与实现类的默认创建实例的方法:CreateInstance()
+ * 该类模板供Factory进行默认调用，一般不直接调用，针对特殊类可以对该类模板进行特化
+ * 
+ * Usage:
+ * @code {Builder}
+ * class A;
+ * class B: public A;
+ * using XXXBuilder = Builder<A, B>;
+ * @endcode
+ * 
+ */ 
 template<typename INTERFACE, typename IMPLEMENT>
 struct Builder
 {
@@ -50,15 +68,38 @@ struct Builder
 template<typename INTERFACE, typename IMPLEMENT>
 std::shared_ptr<INTERFACE> Builder<INTERFACE, IMPLEMENT>::CreateInstance()
 {
+    static_assert(std::is_default_constructible<IMPLEMENT>::value, 
+                  "the implementation is not default constructable");
     INTERFACE* p = new IMPLEMENT();
     return std::shared_ptr<INTERFACE>(p);
 }
 
+/**
+ * @brief Factory: 工厂类模板，根据字符串创建接口类的实例
+ * 
+ * Usage:
+ * @code {.Factory-define}
+ * 1- 新建接口类和实现：
+ * class IA;
+ * class B;
+ * using FactoryIA = Factory<IA>;
+ * Factory<IA>::REGISTER<B>("b");
+ * 
+ * 2- 使用：
+ * shared_ptr<IA> binstance = FactoryIA::CreateInstance("b");
+ * @endcode
+ **/
 template<typename INTERFACE>
 struct Factory
 {
     using CreateFunc = std::shared_ptr<INTERFACE> (void);  
 
+    /**
+     * @brief REGISTER 将实现类注册到接口类的工厂中
+     * 
+     * @tparam IMPLEMENT 实现类的类型
+     * @param name ：注册名称
+     */
     template<typename IMPLEMENT>
     static void REGISTER(const std::string& name);
  
@@ -92,6 +133,10 @@ Factory<INTERFACE>::CreateInstance(const std::string& name)
     return func();
 }
 
+/**
+ * @brief 输入接口类
+ * 
+ * */
 class IInput
 {
 public:
@@ -102,9 +147,16 @@ public:
 
     virtual ~IInput() = default;
 }; // IInput
+/**
+ * @brief 设置IInput接口类工厂的别名并进行显示实例化
+ * 
+ */
+using InputFactory = Factory<IInput>;
 
-template struct Factory<IInput>;
-
+/**
+ * @brief 输出接口类
+ * 
+ */
 class IOutput
 {
 public:
@@ -115,8 +167,11 @@ public:
 
     virtual ~IOutput() = default;
 }; // IOutput
-
-template struct Factory<IOutput>;
+/**
+ * @brief 设置IOutput接口类工厂的别名并进行显示实例化
+ * 
+ */
+using OutputFactory = Factory<IOutput>;
 
 // class IPostProcess
 // {
@@ -125,8 +180,6 @@ template struct Factory<IOutput>;
 
 //     virtual ~IPostProcess() = default;
 // }; 
-
-
 
 } // namespce detsvr
 
