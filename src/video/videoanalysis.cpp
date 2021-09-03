@@ -38,9 +38,10 @@ int main(int argc, char* argv[])
     // std::cout << "Hit ESC to exit" << "\n" ;
     
     std::shared_ptr<detsvr::IInput> pReader = 
-        detsvr::Factory<detsvr::IInput>::CreateInstance("rtsp");
+        detsvr::Factory<detsvr::IInput>::CreateInstance("csi");
     detsvr::PlayManager pm(pReader, 8);
-    if(!pReader->open((void*)"rtsp://172.20.10.9:8554/live/test1"))
+    std::string srcUri = "rtsp://172.20.10.9:8554/live/test1";
+    if(!pReader->open(&srcUri))
     {
         return -1;
     }
@@ -56,10 +57,10 @@ int main(int argc, char* argv[])
     {
         uri: "rtmp://172.20.10.9:1935/live/test2",
         fps: 30,
-        // displayWidth: 1920,
-        // displayHeight: 1080,
-        displayWidth: 1280,
-        displayHeight: 720,
+        displayWidth: 1920,
+        displayHeight: 1080,
+        // displayWidth: 1280,
+        // displayHeight: 720,
         isColor: true
     };
     // detsvr::ScreenWriter::Params params {"Display"};
