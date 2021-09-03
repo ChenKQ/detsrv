@@ -32,7 +32,7 @@ public:
     OpenCVReader(const OpenCVReader& other) = delete; // nocopy
     OpenCVReader& operator= (const OpenCVReader& rhs) = delete; // no assnignment    virtual bool open(const std::string& uri) = 0;
     
-    virtual bool open(void* uri) =0;
+    virtual bool open(void* params) =0;
     void close() override { cap.release(); }
     bool read(cv::Mat& outImage) override;
     bool isOpen() const override {return cap.isOpened(); }
@@ -47,18 +47,38 @@ protected:
 class RtspReader final: public OpenCVReader
 {
 public:
+    using Params = std::string;
+public:
     RtspReader() = default;
     ~RtspReader() override { close(); }
     
     /**
      * @brief open: 打开
      * 
-     * @param uri : 实际参数类型为char*
+     * @param params : 实际参数类型为std::string*
      * @return true 
      * @return false 
      */
-    bool open(void* uri) override;
+    bool open(void* params) override;
 }; // RtspReader
+
+class RtmpReader final : public OpenCVReader
+{
+public:
+    using Params = std::string;
+public:
+    RtmpReader() = default;
+    ~RtmpReader() override { close();  }
+
+    /**
+     * @brief open: 打开
+     * 
+     * @param params： 实际参数类型为std::string*
+     * @return true 
+     * @return false 
+     */
+    bool open(void* params) override;
+};
 
 
 /**
@@ -79,7 +99,7 @@ public:
      * @return true 
      * @return false 
      */
-    bool open(void* uri) override;
+    bool open(void* params) override;
 }; // CSICameraReader
 
 // to be implemented in the future

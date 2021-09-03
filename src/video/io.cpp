@@ -5,6 +5,7 @@ namespace detsvr
 {
 
 using RtspReaderBuilder = Builder<IInput, RtspReader>;
+using RtmpReaderBuilder = Builder<IInput, RtmpReader>;
 using CSICameraReaderBuilder = Builder<IInput, CSICameraReader>;
 
 template<>
@@ -12,7 +13,9 @@ std::map<std::string, std::function<Factory<IInput>::CreateFunc>>
 Factory<IInput>::repository = 
 {
     {"rtsp", RtspReaderBuilder::CreateInstance},
+    {"rtmp", RtmpReaderBuilder::CreateInstance},
     {"csi", CSICameraReaderBuilder::CreateInstance}
+
 };
 
 using RtmpWriterBuilder = Builder<IOutput, RtmpWriter>;
@@ -34,11 +37,11 @@ bool OpenCVReader::read(cv::Mat& outImage)
     return cap.read(outImage);
 }
 
-bool RtspReader::open(void* uri)
+bool RtspReader::open(void* params)
 {
-
+    std::string uri = *(std::string*)(params);
     std::string pipeline = 
-            std::string{"rtspsrc location="} + static_cast<char*>(uri) + 
+            std::string{"rtspsrc location="} + uri + 
             " latency=0 " + "! queue ! rtph264depay " +
             "! h264parse ! nvv4l2decoder enable-max-performance=1 " +
             // "! rtph264depay ! h264parse ! omxh264dec  disable-dvfs=1 " +
@@ -84,6 +87,28 @@ bool CSICameraReader::open(void* uri)
     return true;
 }
 
+bool RtmpReader::open(void* params)
+{
+    std::string uri = *(std::string*)params;
+    std::string pipeline = std::string{} + 
+            "rtmpsrc location=\"" + uri + " live=1\"" 
+            " ! queue ! flvdemux ! h264parse" +
+            " ! nvv4l2decoder enable-max-performance=1 " +
+            "! nvvidconv ! videoconvert ! video/x-raw, format=(string)BGR ! appsink";
+    std::cout << "Using gstreamer pipeline: " << pipeline << "\n";
+
+    cap.open(pipeline, cv::CAP_GSTREAMER);
+    if(!cap.isOpened())
+    {
+        std::cerr << "Failed to open camera." << std::endl;
+        return false;
+    }
+
+    std::cout << "opened the rtsp stream: " << uri << "\n";
+    // play();
+    return true;
+}
+
 bool OpenCVWriter::write(cv::Mat& image)
 {
     if(!isOpen())
@@ -100,7 +125,7 @@ bool RtmpWriter::open(void* params)
     std::string writePipeline = 
             std::string{"appsrc ! queue ! videoconvert"} +
             "! nvvidconv ! omxh264enc " +
-            "! flvmux streamable=true ! rtmpsink location=" + p->uri;
+            "! flvmux streamable=true ! rtmpsink location=\"" + p->uri + " live=1\"";
     int FOURCC = cv::VideoWriter::fourcc('H', '2', '6', '4');
     writer.open( writePipeline, cv::CAP_GSTREAMER, FOURCC,
                 static_cast<double>(p->fps), 
