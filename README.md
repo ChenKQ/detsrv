@@ -22,3 +22,14 @@
 - [] tensorrt推理，串流程
 - [x] 开机自启动
 - [] 部署脚本
+- [] 视频流的实时性
+- [x] rtsp输入
+- [] rtmp输入
+- [] csi输入
+- [] 视频文件输入
+- [] http-base64输入
+- [] http-flv输入
+- [] rtsp输出
+- [] rtsp-server输出
+- [] videofile输入
+- [x] 屏幕输出
