@@ -11,7 +11,7 @@ add_executable(detsvr src/run.cpp   src/base64.cpp
                                     src/utils.cpp
                                     src/plugincore.cpp
 )
-target_link_libraries(detsvr "pthread" "dl")
+target_link_libraries(detsvr "pthread" "dl" "libgstrtspserver-1.0-0")
 target_include_directories(detsvr PUBLIC "include/")
 set_property(TARGET detsvr PROPERTY CXX_STANDARD 17)
 

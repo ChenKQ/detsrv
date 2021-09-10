@@ -1,5 +1,9 @@
 # Detection Server (DetSvr)
 
+# 说明
+
+- 输出rtsp流需要rtspclientsink插件，需要安装
+`sudo apt install gstreamer1.0-rtsp libgstrtspserver-1.0-dev`
 
 ## TODO-LIST
 - [x] cpp-httplib服务搭建
@@ -24,12 +28,13 @@
 - [] 部署脚本
 - [] 视频流的实时性
 - [x] rtsp输入
-- [] rtmp输入
-- [] csi输入
+- [x] rtmp输入
+- [x] csi输入
 - [] 视频文件输入
 - [] http-base64输入
 - [] http-flv输入
-- [] rtsp输出
+- [x] rtsp输出
 - [] rtsp-server输出
 - [] videofile输入
 - [x] 屏幕输出
+- [] 超低延时

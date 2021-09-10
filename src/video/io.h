@@ -15,7 +15,9 @@
 #include <functional>
 #include <condition_variable>
 #include <opencv2/opencv.hpp>
-
+#include <glib.h>
+#include <gst/gst.h>
+#include <gst/rtsp-server/rtsp-server.h>
 
 namespace detsvr
 {
@@ -154,8 +156,97 @@ public:
 };
 
 // to be implementd in the future
-class RtspWriter final : public OpenCVWriter {};
-class RtspServer final : public OpenCVWriter {};
+class RtspWriter final : public OpenCVWriter
+{
+public:
+    typedef struct _Params
+    {
+        std::string uri;
+        int fps;
+        int displayWidth;
+        int displayHeight;
+        bool isColor;
+    } Params;
+public:
+    RtspWriter() = default;
+    ~RtspWriter() override { close(); }
+
+    /**
+     * @brief open 打开
+     * 
+     * @param params void*类型为Params* 
+     * @return true 
+     * @return false 
+     */
+    bool open(void* params) override;
+
+};
+
+class RtspServer final : public IOutput
+{
+public:
+    typedef struct _Params
+    {
+        std::string outIndex;
+        std::string outPort;
+        int outWidth;
+        int outHeight;
+        int outFPS;
+    } Params;
+
+    typedef struct _Context
+    {
+        // gboolean white;
+        GstClockTime timestamp;
+        int outWidth;
+        int outHeight;
+        int outFPS;
+        std::string outIndex;
+        std::string outPort;
+        int count ;
+
+        std::mutex imgMutex;
+        cv::Mat frameImage;
+
+        GMainLoop *loop;
+    } Context;
+
+public:
+    RtspServer();
+    ~RtspServer() override;
+
+    bool open(void* params) override;
+    void close() override;
+    bool write(cv::Mat& image) override;
+    bool isOpen() const override;
+
+protected:
+    Context context;
+    std::thread t_server;
+    std::atomic<bool> isRunning;
+
+    const int failureLimit = 50;
+    // std::mutex imgMutex;
+    // int count = 0;
+    // cv::Mat frameImage;
+public:
+    void run(const Params& param);
+private:
+    static GstRTSPMediaFactory* createRTSPMediaFactory(Context* ctx);
+
+    static void needData(GstElement* appsrc, guint unused, Context* ctx);
+    static void mediaConfigure(GstRTSPMediaFactory* factory, 
+                               GstRTSPMedia* media, gpointer userData);
+    static void clientConnected(GstRTSPServer* server, GstRTSPClient* client, gpointer user_data);
+    static void clientClosed(GstRTSPClient* client, gpointer user_data);
+    // static gboolean disconnect(GstRTSPClient* client);
+    // static gboolean removeSession(GstRTSPClient* client);
+    // static void tearDown(GstRTSPClient* client, GstRTSPContext* ctx, gpointer user_data);
+    // static GstRTSPFilterResult sessionFilterFunc(GstRTSPClient * client,
+    //                                GstRTSPSession * sess,
+    //                                gpointer user_data);
+    void start(const Params& param);
+};
 class FileWriter final : public OpenCVWriter {};
 
 /**
