@@ -1,5 +1,5 @@
 #include "detectionservice.h"
-#include "utils.h"
+#include "detcore/utils.h"
 #include "config.h"
 
 int main(int argc, const char** argv)
@@ -7,7 +7,7 @@ int main(int argc, const char** argv)
     detsvr::Logger& logger = detsvr::Logger::CreateInstance();
     logger.initialize("DetectionService", "detectionsvr");
 
-    detsvr::Config::load("./config.txt");
+    detsvr::Config::load("./config.json");
     detsvr::Config& cfg = detsvr::Config::GetInstance();
 
     if(!detsvr::License::Legal(cfg.licenseCfg.license, cfg.svrCfg.NIC))

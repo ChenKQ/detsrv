@@ -1,7 +1,7 @@
-#ifndef _DETSVR_ISERIALIZE_
-#define _DETSVR_ISERIALIZE_
+#ifndef DETSVR_SERIALIZATION_H
+#define DETSVR_SERIALIZATION_H
 
-#include "detsvr/detsvr.h"
+#include "detcore/io.h"
 #include "config.h"
 #include "nlohmann/json.hpp"
 #include <string>
@@ -30,12 +30,21 @@ void ISerialize<T>::Deserialize(T& obj, const std::string& s)
     j.get_to(obj);
 }
 
+// detection results
 void to_json(nlohmann::ordered_json& j, const BBox& box);
 void from_json(const nlohmann::ordered_json& j, BBox& box);
 
 void to_json(nlohmann::ordered_json& j, const DetectionResult& result);
 void from_json(const nlohmann::ordered_json& j, DetectionResult& result);
 
+// input out params
+void to_json(nlohmann::ordered_json& j, const IInput::Param& p);
+void from_json(const nlohmann::ordered_json& j, IInput::Param& p);
+
+void to_json(nlohmann::ordered_json& j, const IOutput::Param& p);
+void from_json(const nlohmann::ordered_json& j, IOutput::Param& p);
+
+// configures
 void to_json(nlohmann::ordered_json& j, const ServiceConfig& cfg);
 void from_json(const nlohmann::ordered_json& j, ServiceConfig& cfg);
 
@@ -47,7 +56,6 @@ void from_json(const nlohmann::ordered_json& j, LicenseConfig& cfg);
 
 void to_json(nlohmann::ordered_json& j, const Config& cfg);
 void from_json(const nlohmann::ordered_json& j, Config& cfg);
-
 } // end namespace detsvr
 
 #endif

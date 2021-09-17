@@ -1,5 +1,5 @@
 #include "../src/service.h"
-#include "../src/utils.h"
+#include "detcore/utils.h"
 
 int main(int argc, const char **argv) 
 {

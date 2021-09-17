@@ -1,9 +1,8 @@
-#ifndef _DETSVR_SERVICE_
-#define _DETSVR_SERVICE_
+#ifndef DETSVR_SERVICE_H
+#define DETSVR_SERVICE_H
 
 #include "httplib.h"
-#include "utils.h"
-
+#include "detcore/utils.h"
 #include <string>
 
 namespace detsvr

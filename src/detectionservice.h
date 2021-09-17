@@ -1,10 +1,10 @@
-#ifndef _DETSVR_DETECTION_SERVICE_
-#define _DETSVR_DETECTION_SERVICE_
+#ifndef DETSVR_DETECTION_SERVICE_H
+#define DETSVR_DETECTION_SERVICE_H
 
 #include "service.h"
-#include "utils.h"
+#include "detcore/utils.h"
 #include "config.h"
-#include "detsvr/IDetect.h"
+#include "detcore/detection.h"
 #include <memory>
 
 namespace detsvr

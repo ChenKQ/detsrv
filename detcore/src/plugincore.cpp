@@ -1,6 +1,6 @@
-#include "plugincore.h"
+#include "detcore/plugincore.h"
 #include "dlfcn.h"
-#include "utils.h"
+// #include "detcore/utils.h"
 #include <iostream>
 #include <cassert>
 
@@ -20,7 +20,7 @@ DynamicLoader::~DynamicLoader()
 
 void DynamicLoader::open()
 {
-    Logger& logger = detsvr::Logger::CreateInstance();
+    // Logger& logger = detsvr::Logger::CreateInstance();
 
     m_handle = dlopen(m_filename.c_str(), m_flags);
     if(0 == m_handle)
@@ -28,10 +28,12 @@ void DynamicLoader::open()
         m_handle==nullptr;
         const char* error= dlerror(); // clear any existing error
         std::string errorInfo = std::string{"cannot open the file: "} + m_filename + ":\n" + error;
-        logger.Log(errorInfo);
+        std::cerr << errorInfo << '\n';
+        // logger.Log(errorInfo);
         throw std::runtime_error(errorInfo);
     }
-    logger.Log(std::string{"loaded the file: "} + m_filename );
+    std:: cout << "loaded the file: " << m_filename << '\n';
+    // logger.Log(std::string{"loaded the file: "} + m_filename );
     dlerror(); // clear any existing error
 }
 
@@ -50,7 +52,7 @@ void* DynamicLoader::loopup(const char* symbol)
         return nullptr;
     }
 
-    Logger& logger = detsvr::Logger::CreateInstance();
+    // Logger& logger = detsvr::Logger::CreateInstance();
 
     void* ptr = nullptr;
     ptr = dlsym(m_handle, symbol);
@@ -59,10 +61,12 @@ void* DynamicLoader::loopup(const char* symbol)
     {
         const char* error = dlerror(); // clear any existing errors
         std::string errorInfo = std::string{"cannot find the method: "} + symbol + ":\n" + error;
-        logger.Log(errorInfo);
+        std::cerr << errorInfo << '\n';
+        // logger.Log(errorInfo);
         throw std::runtime_error(errorInfo);
     }
-    logger.Log(std::string{"found method: "} + symbol);
+    std::cout << std::string{"found method: "} + symbol + '\n';
+    // logger.Log(std::string{"found method: "} + symbol);
     dlerror(); // clear any existing error
     return ptr;
 }

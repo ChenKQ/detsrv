@@ -1,7 +1,8 @@
-#ifndef _DETSVR_CONFIG_
-#define _DETSVR_CONFIG_
+#ifndef DETSVR_CONFIG_H
+#define DETSVR_CONFIG_H
 
 #include <string>
+#include "detcore/io.h"
 
 namespace detsvr
 {
@@ -19,10 +20,12 @@ typedef struct _PluginConfig
     std::string filename;
 } PluginConfig;
 
+
 typedef struct _LicenseConfig
 {
     std::string license;
 } LicenseConfig;
+
 
 class Config
 {
@@ -30,6 +33,8 @@ public:
     ServiceConfig svrCfg;
     PluginConfig pluginCfg;
     LicenseConfig licenseCfg;
+    IInput::Param inParam;
+    IOutput::Param outParam;
 
 public:
     Config(const Config&) = delete;
@@ -44,7 +49,6 @@ public:
 private:
     Config() = default;
 };
-
 
 } // endnamespace detsvr
 

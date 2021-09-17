@@ -1,10 +1,10 @@
 #include "detectionservice.h"
-#include "detsvr/detsvr.h"
-#include "ISerialize.h"
-#include "plugincore.h"
+#include "detcore/io.h"
+#include "serialization.h"
+#include "detcore/plugincore.h"
 #include "base64.h"
 #include "config.h"
-#include "utils.h"
+#include "detcore/utils.h"
 
 using namespace httplib;
 

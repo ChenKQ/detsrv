@@ -3,6 +3,6 @@
 int main(int argc, const char* argv[])
 {
     detsvr::Config& cfg = detsvr::Config::GetInstance();
-    cfg.dump("config.txt");
+    cfg.dump("config.json");
     return 0;
 }

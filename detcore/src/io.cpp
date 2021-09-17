@@ -1,5 +1,6 @@
-#include "io.h"
-#include "detsvr/detsvr.h"
+#include "detcore/io.h"
+#include "detcore/factory.h"
+#include "detcore/detection.h"
 
 namespace detsvr
 {
@@ -7,6 +8,7 @@ namespace detsvr
 using RtspReaderBuilder = Builder<IInput, RtspReader>;
 using RtmpReaderBuilder = Builder<IInput, RtmpReader>;
 using CSICameraReaderBuilder = Builder<IInput, CSICameraReader>;
+using Mp4FileReaderBuilder = Builder<IInput, Mp4FileReader>;
 
 template<>
 std::map<std::string, std::function<Factory<IInput>::CreateFunc>> 
@@ -14,8 +16,8 @@ Factory<IInput>::repository =
 {
     {"rtsp", RtspReaderBuilder::CreateInstance},
     {"rtmp", RtmpReaderBuilder::CreateInstance},
-    {"csi", CSICameraReaderBuilder::CreateInstance}
-
+    {"csi", CSICameraReaderBuilder::CreateInstance},
+    {"mp4", Mp4FileReaderBuilder::CreateInstance}
 };
 
 using RtspWriterBuilder = Builder<IOutput, RtspWriter>;
@@ -42,12 +44,12 @@ bool OpenCVReader::read(cv::Mat& outImage)
     return cap.read(outImage);
 }
 
-bool RtspReader::open(void* params)
+bool RtspReader::open(const IInput::Param& params)
 {
-    std::string uri = *(std::string*)(params);
+    std::string uri = params.Uri;
     std::string pipeline = 
             std::string{"rtspsrc latency=0 protocols=tcp location="} + uri + 
-            + " ! queue ! rtph264depay " +
+            + " !  rtph264depay " +
             // + " ! rtph264depay "
             "! h264parse ! nvv4l2decoder enable-max-performance=1 " +
             // "! rtph264depay ! h264parse ! omxh264dec  disable-dvfs=1 " +
@@ -66,7 +68,7 @@ bool RtspReader::open(void* params)
     return true;
 }
 
-bool CSICameraReader::open(void* uri)
+bool CSICameraReader::open(const IInput::Param& params)
 {
     std::string pipeline = std::string{} + 
             "nvarguscamerasrc ! video/x-raw(memory:NVMM)" + 
@@ -93,12 +95,12 @@ bool CSICameraReader::open(void* uri)
     return true;
 }
 
-bool RtmpReader::open(void* params)
+bool RtmpReader::open(const IInput::Param& params)
 {
-    std::string uri = *(std::string*)params;
+    std::string uri = params.Uri;
     std::string pipeline = std::string{} + 
             "rtmpsrc location=\"" + uri + " live=1\"" 
-            " ! queue ! flvdemux ! h264parse" +
+            " ! flvdemux ! h264parse" +
             " ! nvv4l2decoder enable-max-performance=1 " +
             "! nvvidconv ! videoconvert ! video/x-raw, format=(string)BGR ! appsink";
     std::cout << "Using gstreamer pipeline: " << pipeline << "\n";
@@ -115,6 +117,29 @@ bool RtmpReader::open(void* params)
     return true;
 }
 
+bool Mp4FileReader::open(const IInput::Param& params)
+{
+    std::string uri = params.Uri;
+    // std::string pipeline = std::string{} + 
+    //         "filesrc location=\"" + uri + "\"" +
+    //         " ! h264parse" +
+    //         " ! nvv4l2decoder enable-max-performance=1 " +
+    //         "! nvvidconv ! videoconvert ! video/x-raw, format=(string)BGR ! appsink";
+    // std::cout << "Using gstreamer pipeline: " << pipeline << "\n";
+
+    // cap.open(uri, cv::CAP_GSTREAMER);
+    cap.open(uri);
+    if(!cap.isOpened())
+    {
+        std::cerr << "Failed to open camera." << std::endl;
+        return false;
+    }
+
+    std::cout << "opened the mp4 file stream: " << uri << "\n";
+    // play();
+    return true;
+}
+
 bool OpenCVWriter::write(cv::Mat& image)
 {
     if(!isOpen())
@@ -125,53 +150,57 @@ bool OpenCVWriter::write(cv::Mat& image)
     return true;
 }
 
-bool RtspWriter::open(void* params)
+bool RtspWriter::open(const IOutput::Param& params)
 {
-    Params* p = reinterpret_cast<Params*>(params);
+    std::string uri = params.Protocol + "://" + params.Ip 
+                      + ":" + params.Port + params.Index;
+                        
     std::string writePipeline = 
-            std::string{"appsrc is-live=true ! queue ! videoconvert"} +
+            std::string{"appsrc is-live=true ! videoconvert"} +
             // "! nvvidconv ! omxh264enc ! h264parse " + 
             " ! nvvidconv ! nvv4l2h264enc preset-level=UltraFastPreset maxperf-enable=1 ! h264parse" +
-            " ! rtspclientsink protocols=tcp latency=0 location=" + p->uri;
+            " ! rtspclientsink protocols=tcp latency=0 location=" + uri;
     int FOURCC = cv::VideoWriter::fourcc('H', '2', '6', '4');
     writer.open( writePipeline, cv::CAP_GSTREAMER, FOURCC,
-                static_cast<double>(p->fps), 
-                cv::Size(p->displayWidth, p->displayHeight), 
-                p->isColor);
+                static_cast<double>(params.FPS), 
+                cv::Size(params.Width, params.Height), 
+                true);
     if(!writer.isOpened())
     {
-        std::cout <<"cannot open video writer: "<< p->uri <<  std::endl;
+        std::cout <<"cannot open video writer: "<< uri <<  std::endl;
         return -1;
     }
-    std::cout << "opened the rtsp video writer: " << p->uri << std::endl;
+    std::cout << "opened the rtsp video writer: " << uri << std::endl;
     return true;
 }
 
-bool RtmpWriter::open(void* params)
+bool RtmpWriter::open(const IOutput::Param& params)
 {
-    Params* p = reinterpret_cast<Params*>(params);
+    std::string uri = params.Protocol + "://" + params.Ip 
+                      + ":" + params.Port + params.Index;
     std::string writePipeline = 
-            std::string{"appsrc is-live=true ! queue ! videoconvert"} +
+            std::string{"appsrc is-live=true ! videoconvert"} +
             // "! nvvidconv ! omxh264enc " +
-            " ! nvvidconv ! nvv4l2h264enc preset-level=UltraFastPreset maxperf-enable=1 ! h264parse ! queue" +
-            "! flvmux streamable=true ! rtmpsink location=\"" + p->uri + " live=1\"";
+            " ! nvvidconv ! nvv4l2h264enc preset-level=UltraFastPreset maxperf-enable=1 ! h264parse " +
+            "! flvmux streamable=true ! rtmpsink location=\"" + uri + " live=1\"";
     int FOURCC = cv::VideoWriter::fourcc('H', '2', '6', '4');
     writer.open( writePipeline, cv::CAP_GSTREAMER, FOURCC,
-                static_cast<double>(p->fps), 
-                cv::Size(p->displayWidth, p->displayHeight), 
-                p->isColor);
+                static_cast<double>(params.FPS), 
+                cv::Size(params.Width, params.Height), 
+                true);
     if(!writer.isOpened())
     {
-        std::cout <<"cannot open video writer: "<< p->uri <<  std::endl;
+        std::cout <<"cannot open video writer: "<< uri <<  std::endl;
         return -1;
     }
-    std::cout << "opened the rtmp video writer: " << p->uri << std::endl;
+    std::cout << "opened the rtmp video writer: " << uri << std::endl;
     return true;
 }
 
 RtspServer::RtspServer()
 {
-    isRunning = false;
+    context.loop = nullptr;
+    // isRunning = false;
 }
 
 RtspServer::~RtspServer()
@@ -179,17 +208,15 @@ RtspServer::~RtspServer()
     close();
 }
 
-bool RtspServer::open(void* param)
+bool RtspServer::open(const IOutput::Param& params)
 {
-    if(isRunning)
+    if(isOpen())
         return false;
 
-    Params* p = (Params*)(param);
-    assert(p!=nullptr);
-    start(*p);
+    start(params);
     
     int count = 0;
-    while(!isRunning)
+    while(!isOpen())
     {
         std::cout << "waiting for the rtsp server startup...\n";
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
@@ -200,31 +227,36 @@ bool RtspServer::open(void* param)
         }
             
     }
-    return isRunning;
+    return isOpen();
 }
 
 void RtspServer::close()
 {
-    if(!isRunning)
+    if(!isOpen())
         return;
-    isRunning = false;
+    // isRunning = false;
     // g_main_loop_quit(context.loop);
 }
 
 bool RtspServer::isOpen() const 
 {
-    return isRunning;
+    if(context.loop == nullptr)
+    {
+        return false;
+    }
+    return g_main_loop_is_running(context.loop);
+    // return isRunning;
 }
 
 bool RtspServer::write(cv::Mat& image)
 {
-    // std::unique_lock<std::mutex> locker(context.imgMutex);
+    std::unique_lock<std::mutex> locker(context.imgMutex);
     // if(image.empty())
     // {
     //     image = cv::Mat::zeros(context.outWidth, context.outHeight, CV_8UC3);
     // }
     std::swap(image, context.frameImage);
-    if(!isRunning)
+    if(!isOpen())
         return false;
     return true;
 }
@@ -238,7 +270,7 @@ void RtspServer::needData(GstElement* appsrc, guint unused, Context* ctx)
 
     ++ctx->count;
 
-    // std::unique_lock<std::mutex> lock(ctx->imgMutex);
+    std::unique_lock<std::mutex> lock(ctx->imgMutex);
     cv::resize(ctx->frameImage, ctx->frameImage, cv::Size{ctx->outWidth, ctx->outHeight},
                0,0,cv::INTER_AREA);
     buffersize = ctx->frameImage.cols * ctx->frameImage.rows * ctx->frameImage.channels();
@@ -253,7 +285,7 @@ void RtspServer::needData(GstElement* appsrc, guint unused, Context* ctx)
     {
         std::cout << "cannot map frame image data into GstMapInfo\n";
     }
-    // lock.unlock();
+    lock.unlock();
 
     // ctx->white = !ctx->white;
     GST_BUFFER_PTS (buffer) = ctx->timestamp;
@@ -267,7 +299,6 @@ void RtspServer::needData(GstElement* appsrc, guint unused, Context* ctx)
         g_main_loop_quit (ctx->loop);
     }
     gst_buffer_unref (buffer);
-    std::cout<<"Index:"<<ctx->outIndex<<"  Frame:"<<ctx->count<<std::endl;
 }
 
 void RtspServer::mediaConfigure(GstRTSPMediaFactory* factory, 
@@ -282,7 +313,7 @@ void RtspServer::mediaConfigure(GstRTSPMediaFactory* factory,
 
     appsrc = gst_bin_get_by_name_recurse_up(GST_BIN(element), "mysrc");
 
-    g_object_set (G_OBJECT (appsrc), "is-live" , TRUE ,  NULL);
+    // g_object_set (G_OBJECT (appsrc), "is-live" , TRUE ,  NULL);
     g_object_set(G_OBJECT(appsrc), 
                   "stream-type", 0,
                   "format", GST_FORMAT_TIME, NULL);
@@ -293,7 +324,10 @@ void RtspServer::mediaConfigure(GstRTSPMediaFactory* factory,
           "height", G_TYPE_INT, int(ctx->outHeight),
           "framerate", GST_TYPE_FRACTION, int(ctx->outFPS), 1,
           "pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1, NULL), NULL);
+    ctx->timestamp = 0;
 
+    // gst_rtsp_media_set_latency(media, 10);
+    // std::cout << "latency: " << gst_rtsp_media_get_latency(media) << '\n';
     // gst_rtsp_media_factory_set_shared(factory, TRUE);
     // gst_rtsp_media_set_reusable(media, TRUE);
     // gst_rtsp_media_unprepare(media);
@@ -316,7 +350,7 @@ GstRTSPMediaFactory* RtspServer::createRTSPMediaFactory(Context* ctx)
     factory = gst_rtsp_media_factory_new ();
 
     char *outAppsrc = new char[300];
-    sprintf(outAppsrc, "( appsrc name=mysrc is-live=true caps=video/x-raw,format=BGR,width=%d,height=%d,framerate=%d/1 ! queue ! videoconvert ! nvvidconv ! nvv4l2h264enc preset-level=UltraFastPreset maxperf-enable=1 ! rtph264pay config-interval=1 name=pay0 pt=96 )",
+    sprintf(outAppsrc, "( appsrc name=mysrc is-live=true caps=video/x-raw,format=BGR,width=%d,height=%d,framerate=%d/1 !  videoconvert ! nvvidconv ! nvv4l2h264enc preset-level=UltraFastPreset maxperf-enable=1 ! rtph264pay config-interval=1 name=pay0 pt=96 )",
         int(ctx->outWidth), int(ctx->outHeight), int(ctx->outFPS));
     // sprintf(outAppsrc, "( appsrc name=mysrc is-live=true caps=video/x-raw,format=BGR,width=%d,height=%d,framerate=%d/1 ! videoconvert ! nvvidconv ! omxh264enc preset-level=UltraFastPreset ! rtph264pay config-interval=1 name=pay0 pt=96 )",
     //     int(context.outWidth), int(context.outHeight), int(context.outFPS));
@@ -329,16 +363,16 @@ GstRTSPMediaFactory* RtspServer::createRTSPMediaFactory(Context* ctx)
     return factory;
 }
 
-void RtspServer::run(const Params& param)
+void RtspServer::run(const IOutput::Param& param)
 {
     context.timestamp = 0;
-    context.outWidth = param.outWidth;
-    context.outHeight = param.outHeight;
-    context.outFPS = param.outFPS;
-    context.outIndex = param.outIndex;
-    context.outPort = param.outPort;
+    context.outWidth = param.Width;
+    context.outHeight = param.Height;
+    context.outFPS = param.FPS;
+    context.outIndex = param.Index;
+    context.outPort = param.Port;
     context.count = 0;
-    context.frameImage = cv::Mat::ones(param.outWidth, param.outHeight, CV_8UC3);
+    context.frameImage = cv::Mat::ones(param.Width, param.Height, CV_8UC3);
     context.loop = nullptr;
 
     // Params prm = param;
@@ -372,10 +406,10 @@ void RtspServer::run(const Params& param)
     std::cout << "start to run the rtsp server...\n";
 
     /* start serving */
-    isRunning = true;
+    // isRunning = true;
     g_main_loop_run (context.loop);
     std::cout << "exited the rtsp server...\n";
-    isRunning = false;
+    // isRunning = false;
 }
 
 void RtspServer::clientConnected(GstRTSPServer* server, GstRTSPClient* client, gpointer user_data)
@@ -383,13 +417,6 @@ void RtspServer::clientConnected(GstRTSPServer* server, GstRTSPClient* client, g
     g_print("client connected %p\n", client);
     g_signal_connect(client, "closed", (GCallback)clientClosed,
                     user_data);
-    // g_signal_connect(client, "teardown-request", (GCallback)tearDown, user_data);
-
-    // GstRTSPSessionPool *pool;
-    // pool = gst_rtsp_client_get_session_pool(client);
-    // guint numCurrentSession = gst_rtsp_session_pool_get_n_sessions(pool);
-    // std::cout << "number of current active session: " << numCurrentSession << '\n';
-    // // g_timeout_add_seconds (8, (GSourceFunc) disconnect, client);
 }
 
 void RtspServer::clientClosed(GstRTSPClient* client, gpointer user_data)
@@ -408,32 +435,8 @@ void RtspServer::clientClosed(GstRTSPClient* client, gpointer user_data)
     guint numCurrentSession = gst_rtsp_session_pool_get_n_sessions(pool);
     std::cout << "number of current active session: " << numCurrentSession << '\n';
 
-    // removeSession(client);
+    removeSession(client);
     // disconnect(client);
-
-    // GstRTSPMountPoints *mounts;
-    // GstRTSPMediaFactory* factory;
-    // g_print ("Time for everyone to go. Removing mount point\n");
-    // /* Remove the mount point to prevent new clients connecting */
-    // mounts = gst_rtsp_client_get_mount_points  (client);
-    // gst_rtsp_mount_points_remove_factory (mounts, ctx->outIndex.c_str());
-
-    /* re mount*/
-    // factory = createRTSPMediaFactory(ctx);
-    // gst_rtsp_mount_points_add_factory (mounts, ctx->outIndex.c_str(), factory);
-    // g_object_unref (mounts);
-
-
-    // /* attach the server to the default maincontext */
-    // GMainContext* loopCtx = g_main_loop_get_context(ctx->loop);
-    // gst_rtsp_server_attach (server, loopCtx);
-
-    // g_print ("stream ready at rtsp://127.0.0.1:%s%s\n",ctx->outPort.c_str(),ctx->outIndex.c_str());
-
-    /* Filter existing clients and remove them */
-    // g_print ("Disconnecting existing clients\n");
-    // gst_rtsp_server_client_filter (server, client_filter, NULL);
-    // gst_rtsp_client_session_filter(client, sessionFilterFunc, NULL);
 }
 
 // gboolean RtspServer::disconnect(GstRTSPClient* client)
@@ -443,17 +446,17 @@ void RtspServer::clientClosed(GstRTSPClient* client, gpointer user_data)
 //     return TRUE;
 // }
 
-// gboolean RtspServer::removeSession(GstRTSPClient* client)
-// {
-//     std::cout << "removing session pool...\n";
-//     GstRTSPSessionPool *pool;
-//     pool = gst_rtsp_client_get_session_pool(client);
-//     std::cout << "pool address: " << pool << '\n';
+gboolean RtspServer::removeSession(GstRTSPClient* client)
+{
+    std::cout << "removing session pool...\n";
+    GstRTSPSessionPool *pool;
+    pool = gst_rtsp_client_get_session_pool(client);
+    std::cout << "pool address: " << pool << '\n';
 
-//     guint removed = gst_rtsp_session_pool_cleanup (pool);
-//     g_object_unref (pool);
-//     g_print("Removed %d sessions\n", removed);  
-// }
+    guint removed = gst_rtsp_session_pool_cleanup (pool);
+    g_object_unref (pool);
+    g_print("Removed %d sessions\n", removed);  
+}
 
 // void RtspServer::tearDown(GstRTSPClient* client, GstRTSPContext* ctx, gpointer user_data)
 // {
@@ -462,14 +465,7 @@ void RtspServer::clientClosed(GstRTSPClient* client, gpointer user_data)
 //     disconnect(client);
 // }
 
-// GstRTSPFilterResult RtspServer::sessionFilterFunc(GstRTSPClient * client,
-//                                    GstRTSPSession * sess,
-//                                    gpointer user_data)
-// {
-//     return GST_RTSP_FILTER_REMOVE;
-// }
-
-void RtspServer::start(const Params& param)
+void RtspServer::start(const IOutput::Param& param)
 {
     t_server = std::thread([&, obj=this]()
     {
@@ -478,13 +474,14 @@ void RtspServer::start(const Params& param)
     t_server.detach();
 }
 
-bool ScreenWriter::open(void* params)
+bool ScreenWriter::open(const IOutput::Param& params)
 {
     if(openFlag)
         return true;
-
-    std::string* p = (Params*)params;
-    windowName = *p;
+    
+    displayWidth = params.Width;
+    displayHeight = params.Height;
+    windowName = params.OutType;
     cv::namedWindow(windowName, cv::WINDOW_AUTOSIZE);
     
     openFlag = true;
@@ -503,7 +500,11 @@ bool ScreenWriter::write(cv::Mat& image)
 {
     if(!isOpen())
         return false;
-    cv::imshow(windowName,image);
+    cv::Mat displayImg;
+    cv::resize(image, displayImg, cv::Size{displayWidth, displayHeight},
+               0,0,cv::INTER_AREA);
+    cv::imshow(windowName,displayImg);
+
     int keycode = cv::waitKey(10) & 0xff ; 
     if (keycode == 27)
     {
@@ -562,18 +563,18 @@ void PlayManager::stop()
 
 bool PlayManager::read(cv::Mat& outImage)
 {
-    // std::unique_lock<std::mutex> bufferLock(bufferMutex);
+    std::unique_lock<std::mutex> bufferLock(bufferMutex);
     if(buffer.empty())
     {
         return false;
     }
     cv::Mat img = buffer.front();
     buffer.pop();
-    // bufferLock.unlock();
+    bufferLock.unlock();
 
     std::swap(img, outImage);
 
-    // std::unique_lock<std::mutex> poolLock(poolMutex);
+    std::unique_lock<std::mutex> poolLock(poolMutex);
     imagePool.push_back(img);
     return true;
 }
@@ -602,33 +603,33 @@ void PlayManager::run()
         }
 
         // fetch one from image pool or from buffer
-        // std::unique_lock<std::mutex> poolLock(poolMutex);
+        std::unique_lock<std::mutex> poolLock(poolMutex);
         if(!imagePool.empty())
         {
             // fetch from image pool
             img = imagePool.back();
             imagePool.pop_back();
-            // poolLock.unlock();
+            poolLock.unlock();
             // std::cout << "from capture image pool...\n";
         }
         else 
         {
             // fetch from buffer
-            // poolLock.unlock();
-            // std::unique_lock<std::mutex> bufferLock(bufferMutex);
+            poolLock.unlock();
+            std::unique_lock<std::mutex> bufferLock(bufferMutex);
             img = buffer.front();
             buffer.pop();
             std::cout << "drop one frame in capture...\n";
-            // bufferLock.unlock();
+            bufferLock.unlock();
             // std::cout << "from capture buffer...\n";
         }
         
         // read image
         if(!cap->read(img))
         {
-            // poolLock.lock();
+            poolLock.lock();
             imagePool.push_back(img);
-            // poolLock.unlock();
+            poolLock.unlock();
 
             ++ failureCount;
             std::cout << "fail to fetch image, count: " << failureCount << "\n";
@@ -645,9 +646,9 @@ void PlayManager::run()
             failureCount = 0;
 
             // put into the buffer
-            // std::unique_lock<std::mutex> bufferLock(bufferMutex);
+            std::unique_lock<std::mutex> bufferLock(bufferMutex);
             buffer.push(img);
-            // bufferLock.unlock();
+            bufferLock.unlock();
         }
     }
 }
@@ -705,23 +706,23 @@ void WriteManager::stop()
 bool WriteManager::write(cv::Mat& image, DetectionResult& result)
 {
     ImageResultPair imgResPair;
-    // std::unique_lock<std::mutex> poolLock(poolMutex);
+    std::unique_lock<std::mutex> poolLock(poolMutex);
     if(!imageResultPool.empty())
     {
         // fetch from image-result pool
         imgResPair = imageResultPool.back();
         imageResultPool.pop_back();
-        // poolLock.unlock();
+        poolLock.unlock();
         // std::cout << "from image-result pool...\n";
     }
     else 
     {
         // fetch from buffer
         // poolLock.unlock();
-        // std::unique_lock<std::mutex> bufferLock(bufferMutex);
+        std::unique_lock<std::mutex> bufferLock(bufferMutex);
         imgResPair = buffer.front();
         buffer.pop();
-        // bufferLock.unlock();
+        bufferLock.unlock();
         // std::cout << "from writer buffer...\n";
     }
     cv::Mat& bufferImg = std::get<0>(imgResPair);
@@ -729,7 +730,7 @@ bool WriteManager::write(cv::Mat& image, DetectionResult& result)
     std::swap(bufferImg, image);
     std::swap(result, *pRes);
 
-    // std::unique_lock<std::mutex> bufferLock(bufferMutex);
+    std::unique_lock<std::mutex> bufferLock(bufferMutex);
     buffer.push(imgResPair);
     if(buffer.size()==1)
     {
@@ -772,10 +773,10 @@ void WriteManager::run()
                 return;
             }
         }
-        // std::unique_lock<std::mutex> bufferLock(bufferMutex);
+        std::unique_lock<std::mutex> bufferLock(bufferMutex);
         imgResPair = buffer.front();
         buffer.pop();
-        // bufferLock.unlock();
+        bufferLock.unlock();
 
         cv::Mat& img = std::get<0>(imgResPair);
         std::shared_ptr<DetectionResult> result = std::get<1>(imgResPair);
@@ -788,9 +789,9 @@ void WriteManager::run()
         }
         if(!writer->write(img))
         {
-            // std::unique_lock<std::mutex> poolLock(poolMutex);
+            std::unique_lock<std::mutex> poolLock(poolMutex);
             imageResultPool.push_back(imgResPair);
-            // poolLock.unlock();
+            poolLock.unlock();
             
             ++failureCount;
             if(failureCount >= FAILURELIMIT)
@@ -802,9 +803,9 @@ void WriteManager::run()
         }
         else 
         {
-            // std::unique_lock<std::mutex> poolLock(poolMutex);
+            std::unique_lock<std::mutex> poolLock(poolMutex);
             imageResultPool.push_back(imgResPair);
-            // poolLock.unlock();
+            poolLock.unlock();
             failureCount = 0;
         }
 

@@ -1,12 +1,15 @@
-#ifndef _DETSVR_PLUGIN_CORE_
-#define _DETSVR_PLUGIN_CORE_
+#ifndef DETSVR_PLUGIN_CORE_H
+#define DETSVR_PLUGIN_CORE_H
 
-#include "detsvr/IDetect.h"
+#include "detcore/detection.h"
 #include <dlfcn.h>
 #include <memory>
 
 namespace detsvr
 {
+
+// class IDetect;
+
 class DynamicLoader final
 {
 public:

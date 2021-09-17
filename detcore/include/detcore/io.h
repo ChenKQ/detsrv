@@ -1,8 +1,7 @@
-#ifndef DETSVR_VIDEO_READER_H
-#define DETSVR_VIDEO_READER_H
+#ifndef DETSVR_VIDEO_IO_H
+#define DETSVR_VIDEO_IO_H
 
-#include "detsvr/detsvr.h"
-
+#include "detcore/detection.h"
 #include <map>
 #include <queue>
 #include <mutex>
@@ -23,6 +22,54 @@ namespace detsvr
 {
 
 /**
+ * @brief 输入接口类
+ * 
+ * */
+class IInput
+{
+public:
+    typedef struct _Param
+    {
+        std::string InType;
+        std::string Uri;
+    } Param;
+public:
+    virtual bool open(const Param& params) = 0;
+    virtual void close() = 0;
+    virtual bool read(cv::Mat& outImage) = 0;
+    virtual bool isOpen() const = 0;
+
+    virtual ~IInput() = default;
+}; // IInput
+
+/**
+ * @brief 输出接口类
+ * 
+ */
+class IOutput
+{
+public:
+    typedef struct _Param
+    {
+        std::string OutType;
+        std::string Protocol;
+        std::string Ip;
+        std::string Port;
+        std::string Index;
+        int Width;
+        int Height;
+        int FPS;
+    } Param;
+public:
+    virtual bool open(const Param& params) = 0;
+    virtual void close() = 0;
+    virtual bool write(cv::Mat& image) = 0;
+    virtual bool isOpen() const = 0;
+
+    virtual ~IOutput() = default;
+}; // IOutput
+
+/**
  *@brief OpenCV读取视频的抽象类，open方法为纯虚函数 
  * 
  */
@@ -34,7 +81,7 @@ public:
     OpenCVReader(const OpenCVReader& other) = delete; // nocopy
     OpenCVReader& operator= (const OpenCVReader& rhs) = delete; // no assnignment    virtual bool open(const std::string& uri) = 0;
     
-    virtual bool open(void* params) =0;
+    virtual bool open(const IInput::Param& params) =0;
     void close() override { cap.release(); }
     bool read(cv::Mat& outImage) override;
     bool isOpen() const override {return cap.isOpened(); }
@@ -49,25 +96,21 @@ protected:
 class RtspReader final: public OpenCVReader
 {
 public:
-    using Params = std::string;
-public:
     RtspReader() = default;
     ~RtspReader() override { close(); }
     
     /**
      * @brief open: 打开
      * 
-     * @param params : 实际参数类型为std::string*
+     * @param params : 
      * @return true 
      * @return false 
      */
-    bool open(void* params) override;
+    bool open(const IInput::Param& params) override;
 }; // RtspReader
 
 class RtmpReader final : public OpenCVReader
 {
-public:
-    using Params = std::string;
 public:
     RtmpReader() = default;
     ~RtmpReader() override { close();  }
@@ -75,13 +118,12 @@ public:
     /**
      * @brief open: 打开
      * 
-     * @param params： 实际参数类型为std::string*
+     * @param params：
      * @return true 
      * @return false 
      */
-    bool open(void* params) override;
-};
-
+    bool open(const IInput::Param& params) override;
+};  // RtmpReader
 
 /**
  * @brief 基于OpenCV和gstreamer读取CSI摄像头
@@ -97,12 +139,28 @@ public:
     /**
      * @brief open: 打开摄像头
      * 
-     * @param uri ：不需要传入参数，调用时传入nullptr即可
+     * @param uri ：
      * @return true 
      * @return false 
      */
-    bool open(void* params) override;
+    bool open(const IInput::Param& params) override;
 }; // CSICameraReader
+
+class Mp4FileReader final : public OpenCVReader
+{
+public:
+    Mp4FileReader() = default;
+    ~Mp4FileReader() override { close();  }
+
+    /**
+     * @brief open: 打开
+     * 
+     * @param params：
+     * @return true 
+     * @return false 
+     */
+    bool open(const IInput::Param& params) override;
+};  // Mp4FileReader
 
 // to be implemented in the future
 class VideoFileReader final : public OpenCVReader {};
@@ -117,7 +175,7 @@ public:
     OpenCVWriter() = default;
     ~OpenCVWriter() override = default;
 
-    virtual bool open(void* params) = 0;
+    virtual bool open(const IOutput::Param& params) = 0;
     void close() override { writer.release(); }
     bool write(cv::Mat& image) override;
     bool isOpen() const override { return writer.isOpened(); }
@@ -133,40 +191,22 @@ protected:
 class RtmpWriter final: public OpenCVWriter
 {
 public:
-    typedef struct _Params
-    {
-        std::string uri;
-        int fps;
-        int displayWidth;
-        int displayHeight;
-        bool isColor;
-    } Params;
-public:
     RtmpWriter() = default;
     ~RtmpWriter() override { close(); }
 
     /**
      * @brief open 打开
      * 
-     * @param params void*类型为Params* 
+     * @param params 
      * @return true 
      * @return false 
      */
-    bool open(void* params) override;
+    bool open(const IOutput::Param& params) override;
 };
 
 // to be implementd in the future
 class RtspWriter final : public OpenCVWriter
 {
-public:
-    typedef struct _Params
-    {
-        std::string uri;
-        int fps;
-        int displayWidth;
-        int displayHeight;
-        bool isColor;
-    } Params;
 public:
     RtspWriter() = default;
     ~RtspWriter() override { close(); }
@@ -174,26 +214,25 @@ public:
     /**
      * @brief open 打开
      * 
-     * @param params void*类型为Params* 
+     * @param params
      * @return true 
      * @return false 
      */
-    bool open(void* params) override;
-
+    bool open(const IOutput::Param& params) override;
 };
 
 class RtspServer final : public IOutput
 {
 public:
-    typedef struct _Params
-    {
-        std::string outIndex;
-        std::string outPort;
-        int outWidth;
-        int outHeight;
-        int outFPS;
-    } Params;
+    RtspServer();
+    ~RtspServer() override;
 
+    bool open(const IOutput::Param& params) override;
+    void close() override;
+    bool write(cv::Mat& image) override;
+    bool isOpen() const override;
+
+private:
     typedef struct _Context
     {
         // gboolean white;
@@ -211,26 +250,16 @@ public:
         GMainLoop *loop;
     } Context;
 
-public:
-    RtspServer();
-    ~RtspServer() override;
-
-    bool open(void* params) override;
-    void close() override;
-    bool write(cv::Mat& image) override;
-    bool isOpen() const override;
-
-protected:
     Context context;
     std::thread t_server;
-    std::atomic<bool> isRunning;
+    // std::atomic<bool> isRunning;
 
     const int failureLimit = 50;
     // std::mutex imgMutex;
     // int count = 0;
     // cv::Mat frameImage;
 public:
-    void run(const Params& param);
+    void run(const IOutput::Param& params);
 private:
     static GstRTSPMediaFactory* createRTSPMediaFactory(Context* ctx);
 
@@ -240,12 +269,9 @@ private:
     static void clientConnected(GstRTSPServer* server, GstRTSPClient* client, gpointer user_data);
     static void clientClosed(GstRTSPClient* client, gpointer user_data);
     // static gboolean disconnect(GstRTSPClient* client);
-    // static gboolean removeSession(GstRTSPClient* client);
+    static gboolean removeSession(GstRTSPClient* client);
     // static void tearDown(GstRTSPClient* client, GstRTSPContext* ctx, gpointer user_data);
-    // static GstRTSPFilterResult sessionFilterFunc(GstRTSPClient * client,
-    //                                GstRTSPSession * sess,
-    //                                gpointer user_data);
-    void start(const Params& param);
+    void start(const IOutput::Param& params);
 };
 class FileWriter final : public OpenCVWriter {};
 
@@ -256,25 +282,25 @@ class FileWriter final : public OpenCVWriter {};
 class ScreenWriter final : public IOutput
 {
 public:
-    using Params = std::string;
-public:
     ScreenWriter() = default;;
     ~ScreenWriter() override { close(); }
 
     /**
      * @brief open 打开
      * 
-     * @param params void*类型为Params*类型
+     * @param params
      * @return true 打开成功
      * @return false 打开失败
      */
-    bool open(void* params) override;
+    bool open(const IOutput::Param& params) override;
     void close() override;
     bool write(cv::Mat& image) override;
     bool isOpen() const override { return openFlag; }
 private:
     bool openFlag = false;
     std::string windowName;
+    int displayWidth;
+    int displayHeight;
 };
 
 /**

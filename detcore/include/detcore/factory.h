@@ -14,36 +14,6 @@ namespace cv
 
 namespace detsvr
 {
-
-/**
- * @brief Bounding Box of an object 
- */
-typedef struct _BBox
-{
-    int idx;    // the ith object in the detection result
-    std::string name; // class id
-    double prob; // the confidence
-    int minx; 
-    int maxx; 
-    int miny; 
-    int maxy;
-} BBox;
-
-/**
- * @brief Detection Result
- */ 
-typedef struct _DetectionResult
-{
-    std::string img_tag; // source
-    std::string img_time; // "YYYY-MM-DD hh:mm:ss"
-    int img_height; // pixel
-    int img_width; // pixel
-    int pre_time; // ms
-    int inf_time; // ms
-
-    std::vector<BBox> list; // detected objects
-} DetectionResult;
-
 /**
  * @brief Builder: 提供接口类与实现类的默认创建实例的方法:CreateInstance()
  * 该类模板供Factory进行默认调用，一般不直接调用，针对特殊类可以对该类模板进行特化
@@ -133,46 +103,6 @@ Factory<INTERFACE>::CreateInstance(const std::string& name)
     return func();
 }
 
-/**
- * @brief 输入接口类
- * 
- * */
-class IInput
-{
-public:
-    virtual bool open(void* params) = 0;
-    virtual void close() = 0;
-    virtual bool read(cv::Mat& outImage) = 0;
-    virtual bool isOpen() const = 0;
-
-    virtual ~IInput() = default;
-}; // IInput
-/**
- * @brief 设置IInput接口类工厂的别名并进行显示实例化
- * 
- */
-using InputFactory = Factory<IInput>;
-
-/**
- * @brief 输出接口类
- * 
- */
-class IOutput
-{
-public:
-    virtual bool open(void* params) = 0;
-    virtual void close() = 0;
-    virtual bool write(cv::Mat& image) = 0;
-    virtual bool isOpen() const = 0;
-
-    virtual ~IOutput() = default;
-}; // IOutput
-/**
- * @brief 设置IOutput接口类工厂的别名并进行显示实例化
- * 
- */
-using OutputFactory = Factory<IOutput>;
-
 // class IPostProcess
 // {
 // public:
@@ -180,6 +110,7 @@ using OutputFactory = Factory<IOutput>;
 
 //     virtual ~IPostProcess() = default;
 // }; 
+
 
 } // namespce detsvr
 

@@ -1,9 +1,8 @@
-#ifndef _DETSVR_UTILS_
-#define _DETSVR_UTILS_
+#ifndef DETSVR_UTILS_h
+#define DETSVR_UTILS_h
 
 #include "httplib.h"
 #include "minilogger.h"
-
 #include <string>
 #include <memory>
 
