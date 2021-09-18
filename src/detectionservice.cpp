@@ -13,7 +13,7 @@ namespace detsvr
 DetectionService::DetectionService(Config& cfg ,Logger& logger) : 
                                             m_cfg(cfg), m_logger(logger)
 {
-    m_pdetector = PluginCore::CreateDetector(m_cfg.pluginCfg.filename.c_str());
+    m_pdetector = factory.CreateDetector(m_cfg.pluginCfg.filename.c_str());
 }
 
 int DetectionService::initialize()

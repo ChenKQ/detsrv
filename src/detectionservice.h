@@ -5,6 +5,7 @@
 #include "detcore/utils.h"
 #include "config.h"
 #include "detcore/detection.h"
+#include "detcore/plugincore.h"
 #include <memory>
 
 namespace detsvr
@@ -20,6 +21,7 @@ public:
 private:
     Config& m_cfg;
     Logger& m_logger;
+    PluginFactory factory;
     std::shared_ptr<IDetect> m_pdetector;
 };
 

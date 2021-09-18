@@ -41,15 +41,15 @@ public:
     virtual ~IDetect() = default;
 
     virtual DetectionResult detect(const char* data, size_t length) = 0;
-    // virtual DetectionResult detect(int rows, int cols, int type, void* data, size_t step) = 0;
+    virtual DetectionResult detect(int rows, int cols, int type, void* data, size_t step) = 0;
 };
+
+}  // end namespace detsvr
 
 extern "C"
 {
-    std::shared_ptr<IDetect> createInstance();
+    std::shared_ptr<detsvr::IDetect> createInstance();
 }
 
-
-}
 
 #endif

@@ -16,8 +16,9 @@ int main(int argc, char* argv[])
     detsvr::Config::load("./config-loopdetect.json");
     detsvr::Config& cfg = detsvr::Config::GetInstance();
 
+    detsvr::PluginFactory factory;
     std::shared_ptr<detsvr::IDetect> pDetector = 
-            detsvr::PluginCore::CreateDetector(cfg.pluginCfg.filename.c_str());
+            factory.CreateDetector(cfg.pluginCfg.filename.c_str());
     detsvr::IInput::Param& inParam = cfg.inParam;
     cv::VideoCapture cap;
     std::cout << "open the file: " << inParam.Uri << '\n';
@@ -67,22 +68,22 @@ int main(int argc, char* argv[])
         }
         
         ++count;
-        // if(count %1 == 0)
-        // {
-        //     result = pDetector->detect(img.rows, img.cols, img.type(), img.data, img.step);
-        //     std::cout   << "{img_width: " << result.img_width 
-        //         << ", img_height: " << result.img_height
-        //         << ", pre_time: " << result.pre_time
-        //         << ", inf_time: " << result.inf_time
-        //         << ", list: " << result.list.size() << "}\n";
-        // }   
+        if(count %1 == 0)
+        {
+            result = pDetector->detect(img.rows, img.cols, img.type(), img.data, img.step);
+            std::cout   << "{img_width: " << result.img_width 
+                << ", img_height: " << result.img_height
+                << ", pre_time: " << result.pre_time
+                << ", inf_time: " << result.inf_time
+                << ", list: " << result.list.size() << "}\n";
+        }   
 
         // pWriter->write(img);
         wm.write(img, result);
     }
 
     // pm.stop();
-    // pWriter->close();
+    pWriter->close();
     // pReader->close();
     return 0;
 }

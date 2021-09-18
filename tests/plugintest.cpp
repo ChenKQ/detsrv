@@ -9,8 +9,14 @@
 int main(int argc, char* argv[])
 {
     std::cout << "test of plugin ...\n";
+    detsvr::PluginFactory factory;
     std::shared_ptr<detsvr::IDetect> pDetector = 
-            detsvr::PluginCore::CreateDetector("./libminic.so");
+            factory.CreateDetector("./libminic.so");
+    if(pDetector == nullptr)
+    {
+        std::cout << "empty pointer...\n";
+    }
+
     const char* imgFile = argv[1];
     std::ifstream fstrm(imgFile, std::ios::binary);
     std::stringstream sstrm;

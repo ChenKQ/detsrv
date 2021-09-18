@@ -1,14 +1,14 @@
 #ifndef DETSVR_PLUGIN_CORE_H
 #define DETSVR_PLUGIN_CORE_H
 
-#include "detcore/detection.h"
+// #include "detcore/detection.h"
 #include <dlfcn.h>
 #include <memory>
 
 namespace detsvr
 {
 
-// class IDetect;
+class IDetect;
 
 class DynamicLoader final
 {
@@ -28,9 +28,14 @@ private:
 
 };
 
-struct PluginCore 
+class PluginFactory
 {
-    static std::shared_ptr<IDetect> CreateDetector(const char* filename);
+public:
+    PluginFactory() = default;
+    std::shared_ptr<::detsvr::IDetect> CreateDetector(const char* filename);
+
+private:
+    std::shared_ptr<DynamicLoader> pLoader;
 };
 
 }

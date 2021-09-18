@@ -1,8 +1,12 @@
 #include "detcore/plugincore.h"
-#include "dlfcn.h"
 // #include "detcore/utils.h"
 #include <iostream>
 #include <cassert>
+
+extern "C"
+{
+#include "dlfcn.h"
+}
 
 namespace detsvr
 {
@@ -71,12 +75,14 @@ void* DynamicLoader::loopup(const char* symbol)
     return ptr;
 }
 
-std::shared_ptr<IDetect> PluginCore::CreateDetector(const char* filename)
+
+std::shared_ptr<::detsvr::IDetect> PluginFactory::CreateDetector(const char* filename)
 {
-    DynamicLoader loader(filename);
-    loader.open();
+    DynamicLoader* ptmp = new DynamicLoader(filename);
+    pLoader.reset(ptmp);
+    pLoader->open();
     std::string methodName = "createInstance";
-    void* p_factory = loader.loopup(methodName.c_str());
+    void* p_factory = pLoader->loopup(methodName.c_str());
     using func = std::shared_ptr<IDetect> (*) ();
     func f = reinterpret_cast<func>(p_factory);
     return f();
