@@ -8,6 +8,7 @@ namespace detsvr
 using RtspReaderBuilder = Builder<IInput, RtspReader>;
 using RtmpReaderBuilder = Builder<IInput, RtmpReader>;
 using CSICameraReaderBuilder = Builder<IInput, CSICameraReader>;
+using USBCameraReaderBuilder = Builder<IInput, USBCameraReader>;
 using Mp4FileReaderBuilder = Builder<IInput, Mp4FileReader>;
 
 template<>
@@ -17,6 +18,7 @@ Factory<IInput>::repository =
     {"rtsp", RtspReaderBuilder::CreateInstance},
     {"rtmp", RtmpReaderBuilder::CreateInstance},
     {"csi", CSICameraReaderBuilder::CreateInstance},
+    {"usb", USBCameraReaderBuilder::CreateInstance},
     {"mp4", Mp4FileReaderBuilder::CreateInstance}
 };
 
@@ -90,7 +92,40 @@ bool CSICameraReader::open(const IInput::Param& params)
         std::cerr << "Failed to open camera." << std::endl;
         return false;
     }
-    std::cout << "opened the csi camera streamed...\n";
+    std::cout << "opened the csi camera stream...\n";
+
+    return true;
+}
+
+bool USBCameraReader::open(const IInput::Param& params)
+{
+    std::string pipeline = std::string{} + 
+            "v4l2src device=/dev/video1" + 
+            " ! image/jpeg, width=1920,height=1080,framerate=30/1,format=MJPG" + 
+            " ! jpegdec" + 
+            // " ! video/x-raw" + 
+            // ",width=(int)" + std::to_string(1280) + 
+            // ",height=(int)" + std::to_string(720) + 
+            // ",format=(string)YUYV" +
+            // ",framerate=(fraction)" + std::to_string(20) +"/1" +
+            " ! nvvidconv " + 
+            // "flip-method=" + std::to_string(flip_method) + 
+            " ! video/x-raw(memory:NVMM) " + 
+            // ", width=(int)" + std::to_string(display_width) + 
+            // ", height=(int)" + std::to_string(display_height) + 
+            ", format=(string)NV12 " + 
+            " ! nvvidconv" +
+            " ! video/x-raw, format=(string)BGRx" +
+            " ! videoconvert ! video/x-raw, format=(string)BGR ! appsink";
+    std::cout << "Using gstreamer pipeline: " << pipeline << "\n";
+
+    cap.open(pipeline, cv::CAP_GSTREAMER);
+    if(!cap.isOpened())
+    {
+        std::cerr << "Failed to open camera." << std::endl;
+        return false;
+    }
+    std::cout << "opened the usb camera stream...\n";
 
     return true;
 }

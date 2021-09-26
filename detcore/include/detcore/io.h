@@ -127,7 +127,6 @@ public:
 
 /**
  * @brief 基于OpenCV和gstreamer读取CSI摄像头
- * 尚未测试
  * 
  */
 class CSICameraReader final : public OpenCVReader
@@ -145,6 +144,26 @@ public:
      */
     bool open(const IInput::Param& params) override;
 }; // CSICameraReader
+
+/**
+ * @brief 基于OpenCV和gstreamer读取CSI摄像头
+ * 
+ */
+class USBCameraReader final : public OpenCVReader
+{
+public:
+    USBCameraReader() = default;
+    ~USBCameraReader() override { close(); }
+
+    /**
+     * @brief open: 打开摄像头
+     * 
+     * @param uri ：
+     * @return true 
+     * @return false 
+     */
+    bool open(const IInput::Param& params) override;
+}; // USBCameraReader
 
 class Mp4FileReader final : public OpenCVReader
 {
