@@ -23,6 +23,13 @@ add_executable(videoplayer  videoplayer.cpp
 target_link_libraries(videoplayer PRIVATE detcore)
 set_property(TARGET videoplayer PROPERTY CXX_STANDARD 17)
 
+add_executable(videopush  videopush.cpp 
+                            ../src/config.cpp
+                            ../src/serialization.cpp
+)
+target_link_libraries(videopush PRIVATE detcore)
+set_property(TARGET videopush PROPERTY CXX_STANDARD 17)
+
 add_executable(loopdetect  loopdetect.cpp 
                             ../src/config.cpp
                             ../src/serialization.cpp

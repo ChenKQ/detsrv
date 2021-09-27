@@ -758,6 +758,7 @@ bool WriteManager::write(cv::Mat& image, DetectionResult& result)
         imgResPair = buffer.front();
         buffer.pop();
         bufferLock.unlock();
+        std::cout << "lost one frame...\n";
         // std::cout << "from writer buffer...\n";
     }
     cv::Mat& bufferImg = std::get<0>(imgResPair);
@@ -843,8 +844,6 @@ void WriteManager::run()
             poolLock.unlock();
             failureCount = 0;
         }
-
-
     }
 }
 

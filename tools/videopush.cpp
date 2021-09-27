@@ -11,9 +11,9 @@
 int main(int argc, char* argv[])
 {
     detsvr::Logger& logger = detsvr::Logger::CreateInstance();
-    logger.initialize("videoplayer", "videoplayer");
+    logger.initialize("videopush", "videopush");
 
-    detsvr::Config::load("./config-videoplayer.json");
+    detsvr::Config::load("./config-videopush.json");
     detsvr::Config& cfg = detsvr::Config::GetInstance();
 
     detsvr::IInput::Param inParam = cfg.inParam;
