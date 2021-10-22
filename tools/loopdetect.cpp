@@ -66,11 +66,10 @@ int main(int argc, char* argv[])
             std::cout << "failed to load or empty image\n";
             continue;
         }
-        
+        result = pDetector->detect(img.rows, img.cols, img.type(), img.data, img.step);
         ++count;
-        if(count %1 == 0)
+        if(count %1000 == 0)
         {
-            result = pDetector->detect(img.rows, img.cols, img.type(), img.data, img.step);
             std::cout   << "{img_width: " << result.img_width 
                 << ", img_height: " << result.img_height
                 << ", pre_time: " << result.pre_time
