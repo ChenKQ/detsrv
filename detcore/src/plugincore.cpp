@@ -75,17 +75,4 @@ void* DynamicLoader::loopup(const char* symbol)
     return ptr;
 }
 
-
-std::shared_ptr<::detsvr::IDetect> PluginFactory::CreateDetector(const char* filename)
-{
-    DynamicLoader* ptmp = new DynamicLoader(filename);
-    pLoader.reset(ptmp);
-    pLoader->open();
-    std::string methodName = "createInstance";
-    void* p_factory = pLoader->loopup(methodName.c_str());
-    using func = std::shared_ptr<IDetect> (*) ();
-    func f = reinterpret_cast<func>(p_factory);
-    return f();
-}
-
-}
+}  // end namespace detsvr
