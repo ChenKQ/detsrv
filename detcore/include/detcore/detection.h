@@ -48,8 +48,7 @@ public:
 
 extern "C"
 {
-    std::shared_ptr<detsvr::IDetect> createInstance();
+    void *createInstance();
 }
-
 
 #endif
