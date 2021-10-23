@@ -9,9 +9,9 @@
 int main(int argc, char* argv[])
 {
     std::cout << "test of plugin ...\n";
-    detsvr::PluginFactory factory;
+    detsvr::PluginFactory<detsvr::IDetect> factory;
     std::shared_ptr<detsvr::IDetect> pDetector = 
-            factory.CreateDetector("./libminic.so");
+            factory.CreateInstance("./libminic.so");
     if(pDetector == nullptr)
     {
         std::cout << "empty pointer...\n";
