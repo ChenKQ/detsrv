@@ -103,15 +103,6 @@ Factory<INTERFACE>::CreateInstance(const std::string& name)
     return func();
 }
 
-// class IPostProcess
-// {
-// public:
-//     virtual bool process(cv::Mat& img, DetectionResult& result) = 0;
-
-//     virtual ~IPostProcess() = default;
-// }; 
-
-
 } // namespce detsvr
 
 #endif

@@ -50,7 +50,7 @@ public:
 
 private:
     Logger() = default;
-    std::unique_ptr<TextLog> m_plogger {nullptr};
+    std::unique_ptr<::minilogger::TextLog> m_plogger {nullptr};
     
 };
 

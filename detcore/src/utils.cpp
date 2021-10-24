@@ -95,8 +95,8 @@ void Logger::initialize(const std::string& p_filename,
 	// struct tm* b = localtime(&a);
     // strftime(str, 19, "-%Y-%m-%d-%H%M%S", b);
 
-    TextLog* p_logger = 
-        new TextLog(p_filename + ".log", p_logtitle, true, true);
+    ::minilogger::TextLog* p_logger = 
+        new ::minilogger::TextLog(p_filename + ".log", p_logtitle, true, true);
         // new TextLog(p_filename + std::string(str) , p_logtitle, true, true);
     if (p_logger == nullptr)
     {

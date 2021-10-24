@@ -1,7 +1,6 @@
 #ifndef DETSVR_VIDEO_IO_H
 #define DETSVR_VIDEO_IO_H
 
-#include "detcore/detection.h"
 #include <map>
 #include <queue>
 #include <mutex>
@@ -338,14 +337,14 @@ public:
         RUN = 1
     };
 public:
-    PlayManager(const std::shared_ptr<IInput>& input, int bufferSize = 8);
+    PlayManager(int bufferSize = 8);
     ~PlayManager();
 
     // copy and assignment are not allowed, so as the move by default
     PlayManager(const PlayManager& rhs) = delete;
     PlayManager& operator=(const PlayManager& rhs) = delete;
 
-    bool start();
+    bool start(const std::shared_ptr<IInput>& input);
     void stop();
     bool read(cv::Mat& outImage);
 
@@ -376,9 +375,11 @@ private:
  * 该类采用多线程异步模型，start方法调用后将开启线程不断调用IOutput实例的write方法
  * 该类的write方法由其他线程调用
  */
+template<typename RES>
 class WriteManager final
 {
-    using ImageResultPair = std::tuple<cv::Mat, std::shared_ptr<DetectionResult>>;
+    using ImageResultPair = std::tuple<cv::Mat, std::shared_ptr<RES>>;
+    using Action = bool (cv::Mat& img, RES& result);
 public:
     enum Status
     {
@@ -388,11 +389,11 @@ public:
     };
 
 public:
-    WriteManager(const std::shared_ptr<IOutput>& output, int bufferSize=8);
+    WriteManager(int bufferSize=8);
     ~WriteManager();
-    bool start();
+    bool start(std::function<Action> act);
     void stop();
-    bool write(cv::Mat& image, DetectionResult& result);
+    bool write(cv::Mat& image, RES& result);
 
     int getStatus() const { return status; }
 
@@ -400,7 +401,8 @@ private:
     void run();
 
 private:
-    std::shared_ptr<IOutput> writer;
+    // std::shared_ptr<IOutput> writer;
+    std::function<Action> action;
 
     std::vector<ImageResultPair> imageResultPool;
     std::queue<ImageResultPair> buffer;
@@ -416,6 +418,180 @@ private:
     const int FAILURELIMIT = 100;
 }; //WriterManager
 
+template<typename RES>
+WriteManager<RES>::WriteManager(int bufSize): bufferSize(bufSize),
+                                              action(nullptr)
+                                                    
+{
+    // assert(output!=nullptr);
+    status = Status::STOP;
+    for(int i=0; i<bufSize; ++i)
+    {
+        RES* p = new RES{};
+        imageResultPool.push_back({cv::Mat{}, std::shared_ptr<RES>(p)});
+    }
+    // writer = output;
+}
+
+template<typename RES>
+WriteManager<RES>::~WriteManager()
+{
+    stop();
+}
+
+template<typename RES>
+bool WriteManager<RES>::start(std::function<Action> act)
+{
+    action = act;
+    // if(!writer->isOpen())
+    // {
+    //     std::cout << "the output source is not open ...\n";
+    //     return false;
+    // }
+
+    if(status == Status::STOP)
+    {
+        status = Status::RUN;
+        pushThread = std::thread([obj=this]
+        {
+            obj->run();
+
+        });
+        pushThread.detach();
+    }
+    return true;
+}
+
+template<typename RES>
+void WriteManager<RES>::stop()
+{
+    status = Status::STOP;
+    signalNew.notify_all();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    newMutex.lock();
+    newMutex.unlock();
+
+    action = nullptr;
+}
+
+template<typename RES>
+bool WriteManager<RES>::write(cv::Mat& image, RES& result)
+{
+    ImageResultPair imgResPair;
+    std::unique_lock<std::mutex> poolLock(poolMutex);
+    if(!imageResultPool.empty())
+    {
+        // fetch from image-result pool
+        imgResPair = imageResultPool.back();
+        imageResultPool.pop_back();
+        poolLock.unlock();
+        // std::cout << "from image-result pool...\n";
+    }
+    else 
+    {
+        // fetch from buffer
+        // poolLock.unlock();
+        std::unique_lock<std::mutex> bufferLock(bufferMutex);
+        imgResPair = buffer.front();
+        buffer.pop();
+        bufferLock.unlock();
+        std::cout << "lost one frame...\n";
+        // std::cout << "from writer buffer...\n";
+    }
+    cv::Mat& bufferImg = std::get<0>(imgResPair);
+    std::shared_ptr<RES> pRes = std::get<1>(imgResPair);
+    std::swap(bufferImg, image);
+    std::swap(result, *pRes);
+
+    std::unique_lock<std::mutex> bufferLock(bufferMutex);
+    buffer.push(imgResPair);
+    if(buffer.size()==1)
+    {
+        signalNew.notify_all();
+    }
+    return true;
+}
+
+template<typename RES>
+void WriteManager<RES>::run()
+{
+    // status = WriteStatus::PLAY;
+    int failureCount = 0;
+    ImageResultPair imgResPair;
+
+    std::unique_lock<std::mutex> sigLock(newMutex);
+    while(true)
+    {
+        // if(!writer->isOpen())
+        // {
+        //     std::cout << "Exit the writing thread since the writer is not open...\n";
+        //     status = Status::STOP;
+        //     return;
+        // }
+
+        if(action==nullptr)
+        {
+            std::cout << "no action ...\n";
+            status = Status::STOP;
+            return;
+        }
+
+        if(status==Status::STOP)
+        {
+            // writer->close();
+            std::cout << "stop writting...\n";
+            return;
+        }
+
+        while(buffer.empty())
+        {
+            signalNew.wait(sigLock);
+
+            if(status==Status::STOP)
+            {
+                // writer->close();
+                std::cout << "stop writting when blocked...\n";
+                return;
+            }
+        }
+        std::unique_lock<std::mutex> bufferLock(bufferMutex);
+        imgResPair = buffer.front();
+        buffer.pop();
+        bufferLock.unlock();
+
+        cv::Mat& img = std::get<0>(imgResPair);
+        std::shared_ptr<RES> result = std::get<1>(imgResPair);
+        // for(const auto& box : result->list)
+        // {
+        //     cv::Point2d tl(box.minx, box.miny);
+        //     cv::Point2d br(box.maxx, box.maxy);
+        //     cv::rectangle(img, tl, br, cv::Scalar(0x27, 0xC1, 0x36), 2);
+        //     cv::putText(img, box.name, cv::Point(box.minx, box.maxy - 1), cv::FONT_HERSHEY_PLAIN, 1.2, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
+        // }
+        if(action==nullptr || !action(img, *result))
+        {
+            std::unique_lock<std::mutex> poolLock(poolMutex);
+            imageResultPool.push_back(imgResPair);
+            poolLock.unlock();
+            
+            ++failureCount;
+            if(failureCount >= FAILURELIMIT)
+            {
+                status = Status::ERROR;
+                std::cout << "failure number of output exceeds the limit...\n";
+                return ;
+            }
+        }
+        else 
+        {
+            std::unique_lock<std::mutex> poolLock(poolMutex);
+            imageResultPool.push_back(imgResPair);
+            poolLock.unlock();
+            failureCount = 0;
+        }
+    }
+}
 
 } // namespace detsvr
 

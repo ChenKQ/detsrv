@@ -75,6 +75,8 @@ public:
 	}
 };
 
+namespace minilogger
+{
 
 // ============================================================
 // New Logger with a new log file and new log title
@@ -172,6 +174,8 @@ void Logger< decorator >::Log(const std::string& p_entry)
 	m_logfile << decorator::Decorate(message);
 	m_logfile.flush();
 }
+
+}  // namespace minilogger
 
 
 #endif
