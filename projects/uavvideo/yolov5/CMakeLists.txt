@@ -40,6 +40,6 @@ target_link_libraries(yolov5 ${OpenCV_LIBS})
 set_property(TARGET yolov5 PROPERTY CXX_STANDARD 17)
 
 if(UNIX)
-add_definitions(-O2 -pthread)
+add_definitions(-O3 -pthread)
 endif(UNIX)
 

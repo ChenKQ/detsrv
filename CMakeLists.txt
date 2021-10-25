@@ -10,5 +10,5 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wl,-rpath=./")
 add_subdirectory(detcore)
 add_subdirectory(tools)
 
-set(PRONAME "uavvideo")
+set(PRONAME "multitask")
 add_subdirectory(projects/${PRONAME})
