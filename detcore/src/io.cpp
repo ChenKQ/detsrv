@@ -553,7 +553,7 @@ PlayManager::PlayManager(int bufSize) : bufferSize(bufSize),
                                         imagePool(bufSize),
                                         cap(nullptr)
 {
-    assert(input!=nullptr);
+    // assert(input!=nullptr);
     playStatus = Status::STOP; 
     for(int i=0; i<bufSize; ++i)
     {
