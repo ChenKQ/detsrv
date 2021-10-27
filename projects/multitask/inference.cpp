@@ -40,8 +40,8 @@ Inference::Inference()
     det.reset(pDet);
     int *pSeg = new int[batchSize * imageWidthFit * imageHeightFit];
     seg.reset(pSeg);
-    int *pLane = new int[batchSize * imageWidthFit * imageHeightFit];
-    lane.reset(pLane);
+    // int *pLane = new int[batchSize * imageWidthFit * imageHeightFit];
+    // lane.reset(pLane);
 
     runtime = createInferRuntime(gLogger);
     assert(runtime != nullptr);
@@ -50,23 +50,23 @@ Inference::Inference()
     context = engine->createExecutionContext();
     assert(context != nullptr);
     delete[] trtModelStream;
-    assert(engine->getNbBindings() == 4);
+    assert(engine->getNbBindings() == 3);
     // In order to bind the buffers, we need to know the names of the input and output tensors.
     // Note that indices are guaranteed to be less than IEngine::getNbBindings()
 
     const int inputIndex = engine->getBindingIndex(inputBlobName);
     const int outputIndex = engine->getBindingIndex(outputDetName);
     const int outputSegIndex = engine->getBindingIndex(outputSegName);
-    const int outputLaneIndex = engine->getBindingIndex(outputLaneName);
+    // const int outputLaneIndex = engine->getBindingIndex(outputLaneName);
     assert(inputIndex == 0);
     assert(outputIndex == 1);
     assert(outputSegIndex == 2);
-    assert(outputLaneIndex == 3);
+    // assert(outputLaneIndex == 3);
 
     CUDA_CHECK(cudaMalloc(&buffers[inputIndex], batchSize * 3 * inputHeight * inputWidth * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&buffers[outputIndex], batchSize * outputSize * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&buffers[outputSegIndex], batchSize * imageWidthFit * imageHeightFit * sizeof(int)));
-    CUDA_CHECK(cudaMalloc(&buffers[outputLaneIndex], batchSize * imageWidthFit * imageHeightFit * sizeof(int)));
+    // CUDA_CHECK(cudaMalloc(&buffers[outputLaneIndex], batchSize * imageWidthFit * imageHeightFit * sizeof(int)));
 
     CUDA_CHECK(cudaStreamCreate(&stream));
 }
@@ -78,25 +78,25 @@ Inference::~Inference()
     const int inputIndex = engine->getBindingIndex(inputBlobName);
     const int outputIndex = engine->getBindingIndex(outputDetName);
     const int outputSegIndex = engine->getBindingIndex(outputSegName);
-    const int outputLaneIndex = engine->getBindingIndex(outputLaneName);
+    // const int outputLaneIndex = engine->getBindingIndex(outputLaneName);
     CUDA_CHECK(cudaFree(buffers[inputIndex]));
     CUDA_CHECK(cudaFree(buffers[outputIndex]));
     CUDA_CHECK(cudaFree(buffers[outputSegIndex]));
-    CUDA_CHECK(cudaFree(buffers[outputLaneIndex]));
+    // CUDA_CHECK(cudaFree(buffers[outputLaneIndex]));
     // Destroy the engine
     context->destroy();
     engine->destroy();
     runtime->destroy();
 }
 
-void Inference::doInference(float* input, float* det_output, int* seg_output, int* lane_output)
+void Inference::doInference(float* input, float* det_output, int* seg_output)
 {
     // DMA input batch data to device, infer on the batch asynchronously, and DMA output back to host
     CUDA_CHECK(cudaMemcpyAsync(buffers[0], input, batchSize * 3 * inputHeight * inputWidth * sizeof(float), cudaMemcpyHostToDevice, stream));
     context->enqueue(batchSize, buffers, stream, nullptr);
     CUDA_CHECK(cudaMemcpyAsync(det_output, buffers[1], batchSize * outputSize * sizeof(float), cudaMemcpyDeviceToHost, stream));
     CUDA_CHECK(cudaMemcpyAsync(seg_output, buffers[2], batchSize * imageWidthFit * imageHeightFit * sizeof(int), cudaMemcpyDeviceToHost, stream));
-    CUDA_CHECK(cudaMemcpyAsync(lane_output, buffers[3], batchSize * imageWidthFit * imageHeightFit * sizeof(int), cudaMemcpyDeviceToHost, stream));
+    // CUDA_CHECK(cudaMemcpyAsync(lane_output, buffers[3], batchSize * imageWidthFit * imageHeightFit * sizeof(int), cudaMemcpyDeviceToHost, stream));
     cudaStreamSynchronize(stream);
 }
 
@@ -116,7 +116,7 @@ DetectionResult Inference::detect(int rows, int cols, int type, void* pdata, siz
 
     // Run inference
     start = std::chrono::high_resolution_clock::now();
-    doInference(data.get(), det.get(), seg.get(), lane.get());
+    doInference(data.get(), det.get(), seg.get());
     // end = std::chrono::high_resolution_clock::now();
     std::vector<Yolo::Detection> batch_res;
     nms(batch_res, det.get(), CONF_THRESH, NMS_THRESH);
@@ -127,14 +127,14 @@ DetectionResult Inference::detect(int rows, int cols, int type, void* pdata, siz
     // }
     cv::Mat tmp_seg(imageHeightFit, imageWidthFit, CV_32S, seg.get());
     // sotore lane results
-    cv::Mat tmp_lane(imageHeightFit, imageWidthFit, CV_32S, lane.get());
+    // cv::Mat tmp_lane(imageHeightFit, imageWidthFit, CV_32S, lane.get());
     cv::Mat seg_res(img.rows, img.cols, CV_32S);
-    cv::Mat lane_res(img.rows, img.cols, CV_32S);
+    // cv::Mat lane_res(img.rows, img.cols, CV_32S);
 
     cv::resize(tmp_seg, seg_res, seg_res.size(), 0, 0, cv::INTER_NEAREST);
-    cv::resize(tmp_lane, lane_res, lane_res.size(), 0, 0, cv::INTER_NEAREST);
+    // cv::resize(tmp_lane, lane_res, lane_res.size(), 0, 0, cv::INTER_NEAREST);
     result.segResult = seg_res;
-    result.segLane = lane_res;
+    // result.segLane = lane_res;
     end = std::chrono::high_resolution_clock::now();
     int inftime = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 

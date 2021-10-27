@@ -130,11 +130,13 @@ int main(int argc, char* argv[])
     detsvr::PluginFactory<detsvr::IDetect> factory;
     std::shared_ptr<detsvr::IDetect> pDetector = 
             factory.CreateInstance(cfg.pluginCfg.filename.c_str());
-    
     detsvr::IInput::Param& inParam = cfg.inParam;
-    cv::VideoCapture cap;
-    std::cout << "open the file: " << inParam.Uri << '\n';
-    cap.open(inParam.Uri);
+    std::shared_ptr<detsvr::IInput> pReader = 
+        detsvr::Factory<detsvr::IInput>::CreateInstance(inParam.InType);
+    if(!pReader->open(inParam))
+    {
+        return -1;
+    }
 
     detsvr::IOutput::Param& outParam = cfg.outParam;
     std::shared_ptr<detsvr::IOutput> pWriter = 
@@ -173,22 +175,22 @@ int main(int argc, char* argv[])
     Result result;
 
     int count = 0;
-    int frameNumber = cap.get(cv::CAP_PROP_FRAME_COUNT);
     while(true)
     {
-        int currentPos = cap.get(cv::CAP_PROP_POS_FRAMES);
-        if(currentPos >= frameNumber-1)
-        {
-            cap.set(cv::CAP_PROP_POS_FRAMES, 0);
-            continue;
-        }
-
-        if(!cap.isOpened() || !pWriter->isOpen())
+        if(!pReader->isOpen() || !pWriter->isOpen())
         {
             // pm.stop();
             wm.stop();
             return -1;
         }
+
+        // if(pm.getStatus()!=detsvr::PlayManager::RUN)
+        // {
+        //     wm.stop();
+        //     std::cerr << "Error: the input is status is: " << 
+        //         static_cast<detsvr::PlayManager::Status>(pm.getStatus());
+        //     return -1;
+        // }
 
         if(wm.getStatus()!=detsvr::WriteManager<Result>::RUN)
         {
@@ -198,8 +200,8 @@ int main(int argc, char* argv[])
             return -1;
         }
 
-        bool ret = cap.read(img);
-    	if((!ret) || img.empty())
+        if(!pReader->read(img))
+    	// if (!pm.read(img)) 
         {
             // std::cout<<"Capture read error"<<std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -223,6 +225,6 @@ int main(int argc, char* argv[])
 
     // pm.stop();
     pWriter->close();
-    // pReader->close();
+    pReader->close();
     return 0;
 }

@@ -12,7 +12,7 @@ link_directories(/usr/local/cuda/lib64)
 # link_directories(/usr/lib/aarch64-linux-gnu)
 link_directories(${PROJECT_SOURCE_DIR}/../../build)
 
-add_subdirectory(yolop)
+add_subdirectory(yolopcut)
 
 add_library(inference SHARED inference.cpp)
 target_include_directories(inference PUBLIC yolop)
@@ -23,7 +23,7 @@ target_link_libraries(inference PUBLIC ${OpenCV_LIBS})
 target_link_libraries(inference PUBLIC libmyplugins.so)
 set_property(TARGET inference PROPERTY CXX_STANDARD 17)
 
-add_executable(multitask run2.cpp   
+add_executable(multitask run.cpp   
                         config.cpp
                         serialization.cpp   
 )

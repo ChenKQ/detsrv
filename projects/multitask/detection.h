@@ -35,7 +35,7 @@ typedef struct _DetectionResult
 
     std::vector<BBox> list; // detected objects
     cv::Mat segResult; 
-    cv::Mat segLane;
+    // cv::Mat segLane;
 } DetectionResult;
 
 class IDetect

@@ -23,7 +23,7 @@ public:
     DetectionResult detect(int rows, int cols, int type, void* pdata, size_t step) override;
 private:
     void preprocessImg(cv::Mat& img);
-    void doInference(float* input, float* det_output, int* seg_output, int* lane_output);
+    void doInference(float* input, float* det_output, int* seg_output);
 
 private:
     cudaStream_t stream;
@@ -34,7 +34,7 @@ private:
     std::unique_ptr<float[]> data {nullptr};
     std::unique_ptr<float[]> det {nullptr};
     std::unique_ptr<int[]> seg {nullptr};
-    std::unique_ptr<int[]> lane {nullptr};
+    // std::unique_ptr<int[]> lane {nullptr};
 
     IRuntime* runtime = nullptr;
     ICudaEngine* engine = nullptr;
@@ -44,7 +44,7 @@ private:
     const double nmsThresh = 0.4;
     const double confidenceThresh = 0.5;
     
-    const std::string engineName = "yolop.engine";
+    const std::string engineName = "yolopcut.engine";
     const int batchSize = 1;
     const int inputWidth = Yolo::INPUT_W;
     const int inputHeight = Yolo::INPUT_H;
@@ -57,7 +57,7 @@ private:
     const char* inputBlobName = INPUT_BLOB_NAME;
     const char* outputDetName = OUTPUT_DET_NAME;
     const char* outputSegName = OUTPUT_SEG_NAME;
-    const char* outputLaneName = OUTPUT_LANE_NAME;
+    // const char* outputLaneName = OUTPUT_LANE_NAME;
 
     Logger gLogger;
 };

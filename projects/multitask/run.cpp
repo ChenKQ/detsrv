@@ -16,7 +16,7 @@ typedef struct PostProcess
     static inline bool Act(cv::Mat& img, Result& result)
     {
         static const std::vector<cv::Vec3b> segColor{cv::Vec3b(0, 0, 0), cv::Vec3b(0, 255, 0), cv::Vec3b(255, 0, 0)};
-        static const std::vector<cv::Vec3b> laneColor{cv::Vec3b(0, 0, 0), cv::Vec3b(0, 0, 255), cv::Vec3b(0, 0, 0)};
+        // static const std::vector<cv::Vec3b> laneColor{cv::Vec3b(0, 0, 0), cv::Vec3b(0, 0, 255), cv::Vec3b(0, 0, 0)};
         // cv::Mat cvt_img_cpu = img;
         // cvt_img.download(cvt_img_cpu);
 
@@ -27,14 +27,14 @@ typedef struct PostProcess
             for (int col = 0; col < img.cols; ++col) 
             {
                 int seg_idx = result.segResult.at<int>(row, col);
-                int lane_idx = result.segLane.at<int>(row, col);
+                // int lane_idx = result.segLane.at<int>(row, col);
                 //std::cout << "enter" << ix << std::endl;
                 for (int i = 0; i < 3; ++i) {
-                    if (lane_idx) {
-                        if (i != 2)
-                            pdata[i] = pdata[i] / 2 + laneColor[lane_idx][i] / 2;
-                    }
-                    else if (seg_idx)
+                    // if (lane_idx) {
+                    //     if (i != 2)
+                    //         pdata[i] = pdata[i] / 2 + laneColor[lane_idx][i] / 2;
+                    // }
+                    if (seg_idx)
                         pdata[i] = pdata[i] / 2 + segColor[seg_idx][i] / 2;
                 }
                 pdata += 3;
@@ -130,13 +130,11 @@ int main(int argc, char* argv[])
     detsvr::PluginFactory<detsvr::IDetect> factory;
     std::shared_ptr<detsvr::IDetect> pDetector = 
             factory.CreateInstance(cfg.pluginCfg.filename.c_str());
+    
     detsvr::IInput::Param& inParam = cfg.inParam;
-    std::shared_ptr<detsvr::IInput> pReader = 
-        detsvr::Factory<detsvr::IInput>::CreateInstance(inParam.InType);
-    if(!pReader->open(inParam))
-    {
-        return -1;
-    }
+    cv::VideoCapture cap;
+    std::cout << "open the file: " << inParam.Uri << '\n';
+    cap.open(inParam.Uri);
 
     detsvr::IOutput::Param& outParam = cfg.outParam;
     std::shared_ptr<detsvr::IOutput> pWriter = 
@@ -175,22 +173,22 @@ int main(int argc, char* argv[])
     Result result;
 
     int count = 0;
+    int frameNumber = cap.get(cv::CAP_PROP_FRAME_COUNT);
     while(true)
     {
-        if(!pReader->isOpen() || !pWriter->isOpen())
+        int currentPos = cap.get(cv::CAP_PROP_POS_FRAMES);
+        if(currentPos >= frameNumber-1)
+        {
+            cap.set(cv::CAP_PROP_POS_FRAMES, 0);
+            continue;
+        }
+
+        if(!cap.isOpened() || !pWriter->isOpen())
         {
             // pm.stop();
             wm.stop();
             return -1;
         }
-
-        // if(pm.getStatus()!=detsvr::PlayManager::RUN)
-        // {
-        //     wm.stop();
-        //     std::cerr << "Error: the input is status is: " << 
-        //         static_cast<detsvr::PlayManager::Status>(pm.getStatus());
-        //     return -1;
-        // }
 
         if(wm.getStatus()!=detsvr::WriteManager<Result>::RUN)
         {
@@ -200,8 +198,8 @@ int main(int argc, char* argv[])
             return -1;
         }
 
-        if(!pReader->read(img))
-    	// if (!pm.read(img)) 
+        bool ret = cap.read(img);
+    	if((!ret) || img.empty())
         {
             // std::cout<<"Capture read error"<<std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -212,6 +210,7 @@ int main(int argc, char* argv[])
         if(count %1 == 0)
         {
             result = pDetector->detect(img.rows, img.cols, img.type(), img.data, img.step);
+            // std::this_thread::sleep_for(std::chrono::milliseconds(100));
             std::cout   << "{img_width: " << result.img_width 
                 << ", img_height: " << result.img_height
                 << ", pre_time: " << result.pre_time
@@ -220,11 +219,11 @@ int main(int argc, char* argv[])
         }   
 
         // pWriter->write(img);
-        wm.write(img, result);
+        wm.write(img, result);      
     }
 
     // pm.stop();
     pWriter->close();
-    pReader->close();
+    // pReader->close();
     return 0;
 }
