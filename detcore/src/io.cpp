@@ -98,8 +98,9 @@ bool CSICameraReader::open(const IInput::Param& params)
 
 bool USBCameraReader::open(const IInput::Param& params)
 {
+    std::string dev = params.Uri;
     std::string pipeline = std::string{} + 
-            "v4l2src device=/dev/video1" + 
+            "v4l2src device=" + dev + 
             " ! image/jpeg, width=1920,height=1080,framerate=30/1,format=MJPG" + 
             " ! jpegdec" + 
             // " ! video/x-raw" + 
